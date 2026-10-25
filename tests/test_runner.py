@@ -249,3 +249,11 @@ def test_the_cli_models_command_lists_the_mobility_models(capsys):
     assert main(["models"]) == 0
     printed = capsys.readouterr().out
     assert "random-waypoint" in printed and "gauss-markov" in printed
+
+
+def test_the_cli_reports_broken_settings_without_a_traceback(tmp_path, capsys):
+    assert main(["run", "--settings", str(tmp_path / "empty"), "--output", str(tmp_path / "results")]) == 1
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "parameters file not found" in captured.err
+    assert "Traceback" not in captured.err

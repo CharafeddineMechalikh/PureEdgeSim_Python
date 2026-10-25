@@ -156,6 +156,38 @@ def test_an_unknown_architecture_is_rejected(tmp_path):
         load_parameters(path)
 
 
+def test_a_misspelled_boolean_is_rejected_with_a_suggestion(tmp_path):
+    path = tmp_path / "p.properties"
+    path.write_text("simulation_time=10\nparallel_simulation=ture\n", encoding="utf-8")
+    with pytest.raises(ValueError, match='parameter "parallel_simulation" must be "true" or "false", found "ture"'):
+        load_parameters(path)
+    with pytest.raises(ValueError, match='did you mean "true"'):
+        load_parameters(path)
+
+
+def test_an_unknown_property_is_reported_without_stopping(tmp_path, capsys):
+    path = tmp_path / "p.properties"
+    path.write_text("simulation_time=10\nwan_bandwidht=20\n", encoding="utf-8")
+    assert load_parameters(path).simulation_duration == 600.0
+    printed = capsys.readouterr().err
+    assert 'unknown property "wan_bandwidht"' in printed
+    assert 'did you mean "wan_bandwidth"' in printed
+
+
+def test_an_unknown_property_without_a_close_match_is_just_reported(tmp_path, capsys):
+    path = tmp_path / "p.properties"
+    path.write_text("simulation_time=10\nmy_note=hello\n", encoding="utf-8")
+    assert load_parameters(path).simulation_duration == 600.0
+    printed = capsys.readouterr().err
+    assert 'unknown property "my_note"' in printed
+    assert "did you mean" not in printed
+
+
+def test_shipped_settings_hold_no_unknown_property(settings_folder, capsys):
+    load_parameters(settings_folder / "simulation_parameters.properties")
+    assert "unknown property" not in capsys.readouterr().err
+
+
 def test_validate_accepts_the_dataclass_defaults():
     validate(SimulationParameters(), Path("defaults"))
 

@@ -1,6 +1,7 @@
 """Global simulation parameters and the properties parser."""
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -8,6 +9,24 @@ NANOJOULES_TO_WATT_HOURS = 2.7777777777778e-13
 CELLULAR_DOWNLINK_FACTOR = 12.7777777777778e-13
 ARCHITECTURES = ("CLOUD_ONLY", "EDGE_ONLY", "MIST_ONLY", "MIST_AND_CLOUD", "EDGE_AND_CLOUD",
                  "MIST_AND_EDGE", "ALL")
+
+# Every property the parser reads, used to point out unknown keys.
+KNOWN_PROPERTIES = frozenset((
+    "random_seed", "simulation_time", "batch_size", "parallel_simulation", "update_interval", "pause_length",
+    "display_real_time_charts", "auto_close_real_time_charts", "charts_update_interval", "save_charts", "length",
+    "width", "edge_devices_range", "edge_datacenters_coverage", "enable_registry", "registry_mode",
+    "enable_orchestrators", "deploy_orchestrator", "wait_for_all_tasks", "save_log_file", "clear_output_folder",
+    "deep_log_enabled", "min_number_of_edge_devices", "max_number_of_edge_devices", "edge_device_counter_size",
+    "realistic_network_model", "network_update_interval", "one_shared_wan_network", "output_folder",
+    "wan_bandwidth", "wan_latency", "wan_nanojoules_per_bit", "man_bandwidth", "man_latency",
+    "man_nanojoules_per_bit", "wifi_bandwidth", "wifi_device_transmission_nanojoules_per_bit",
+    "wifi_device_reception_nanojoules_per_bit", "wifi_access_point_transmission_nanojoules_per_bit",
+    "wifi_access_point_reception_nanojoules_per_bit", "wifi_latency", "ethernet_bandwidth",
+    "ethernet_nanojoules_per_bit", "ethernet_latency", "cellular_bandwidth",
+    "cellular_device_transmission_nanojoules_per_bit", "cellular_device_reception_nanojoules_per_bit",
+    "cellular_base_station_nanojoules_per_bit_up_link", "cellular_base_station_nanojoules_per_bit_down_link",
+    "cellular_latency", "orchestration_architectures", "orchestration_algorithms",
+))
 
 
 @dataclass
@@ -92,10 +111,44 @@ def _number(values: dict[str, str], key: str, path: Path, default: float) -> flo
         raise ValueError(f'{path}: parameter "{key}" must be a number, found "{values[key].strip()}"') from error
 
 
-def _boolean(values: dict[str, str], key: str, default: bool) -> bool:
+def _boolean(values: dict[str, str], key: str, path: Path, default: bool) -> bool:
     if key not in values or values[key].strip() == "":
         return default
-    return values[key].strip().lower() == "true"
+    value = values[key].strip()
+    if value.lower() == "true":
+        return True
+    if value.lower() == "false":
+        return False
+    hint = _suggestion(value, ("true", "false"))
+    suffix = f', did you mean "{hint}"?' if hint else "."
+    raise ValueError(f'{path}: parameter "{key}" must be "true" or "false", found "{value}"{suffix}')
+
+
+def _suggestion(name: str, known) -> str | None:
+    """The known name closest to the given one, when it differs by at most two edits."""
+    def distance(first: str, second: str) -> int:
+        previous = list(range(len(second) + 1))
+        for i, first_char in enumerate(first, 1):
+            current = [i]
+            for j, second_char in enumerate(second, 1):
+                current.append(min(previous[j] + 1, current[j - 1] + 1,
+                                   previous[j - 1] + (first_char != second_char)))
+            previous = current
+        return previous[-1]
+
+    best = min(known, key=lambda candidate: distance(name.lower(), candidate.lower()))
+    return best if distance(name.lower(), best.lower()) <= 2 else None
+
+
+def _warn_about_unknown_properties(values: dict[str, str], path: Path) -> None:
+    """A misspelled key would otherwise be ignored silently, and the
+    simulation would run with an unintended value."""
+    for key in sorted(values):
+        if key in KNOWN_PROPERTIES:
+            continue
+        hint = _suggestion(key, KNOWN_PROPERTIES)
+        detail = f', did you mean "{hint}"?' if hint else ", it is ignored."
+        print(f'{path}: warning, unknown property "{key}"{detail}', file=sys.stderr)
 
 
 def load_parameters(path: str | Path) -> SimulationParameters:
@@ -112,33 +165,34 @@ def load_parameters(path: str | Path) -> SimulationParameters:
         values[key.strip()] = value
 
     parameters = SimulationParameters()
+    _warn_about_unknown_properties(values, path)
     parameters.simulation_duration = _number(values, "simulation_time", path, 10) * 60
     parameters.update_interval = _number(values, "update_interval", path, 1)
     parameters.pause_length = _number(values, "pause_length", path, 3)
     parameters.batch_size = int(_number(values, "batch_size", path, 100))
-    parameters.parallel_simulation = _boolean(values, "parallel_simulation", False)
-    parameters.display_real_time_charts = _boolean(values, "display_real_time_charts", False)
-    parameters.auto_close_real_time_charts = _boolean(values, "auto_close_real_time_charts", True)
+    parameters.parallel_simulation = _boolean(values, "parallel_simulation", path, False)
+    parameters.display_real_time_charts = _boolean(values, "display_real_time_charts", path, False)
+    parameters.auto_close_real_time_charts = _boolean(values, "auto_close_real_time_charts", path, True)
     parameters.charts_update_interval = _number(values, "charts_update_interval", path, 30)
-    parameters.save_charts = _boolean(values, "save_charts", False)
-    parameters.save_log_file = _boolean(values, "save_log_file", True)
-    parameters.clear_output_folder = _boolean(values, "clear_output_folder", False)
-    parameters.deep_log_enabled = _boolean(values, "deep_log_enabled", False)
+    parameters.save_charts = _boolean(values, "save_charts", path, False)
+    parameters.save_log_file = _boolean(values, "save_log_file", path, True)
+    parameters.clear_output_folder = _boolean(values, "clear_output_folder", path, False)
+    parameters.deep_log_enabled = _boolean(values, "deep_log_enabled", path, False)
     parameters.simulation_map_length = _number(values, "length", path, 200)
     parameters.simulation_map_width = _number(values, "width", path, 200)
     parameters.edge_devices_range = _number(values, "edge_devices_range", path, 10)
     parameters.edge_data_centers_range = _number(values, "edge_datacenters_coverage", path, 200)
-    parameters.enable_registry = _boolean(values, "enable_registry", False)
+    parameters.enable_registry = _boolean(values, "enable_registry", path, False)
     parameters.registry_mode = _get(values, "registry_mode", path) if "registry_mode" in values else "CLOUD"
-    parameters.enable_orchestrators = _boolean(values, "enable_orchestrators", False)
+    parameters.enable_orchestrators = _boolean(values, "enable_orchestrators", path, False)
     parameters.deploy_orchestrator = (values.get("deploy_orchestrator") or "CLOUD").strip()
-    parameters.wait_for_all_tasks = _boolean(values, "wait_for_all_tasks", True)
+    parameters.wait_for_all_tasks = _boolean(values, "wait_for_all_tasks", path, True)
     parameters.min_number_of_devices = int(_number(values, "min_number_of_edge_devices", path, 100))
     parameters.max_number_of_devices = int(_number(values, "max_number_of_edge_devices", path, 300))
     parameters.devices_increment = int(_number(values, "edge_device_counter_size", path, 100))
-    parameters.realistic_network_model = _boolean(values, "realistic_network_model", False)
+    parameters.realistic_network_model = _boolean(values, "realistic_network_model", path, False)
     parameters.network_update_interval = _number(values, "network_update_interval", path, 1)
-    parameters.one_shared_wan_network = _boolean(values, "one_shared_wan_network", True)
+    parameters.one_shared_wan_network = _boolean(values, "one_shared_wan_network", path, True)
     parameters.output_folder = (values.get("output_folder") or "output").strip()
     seed = values.get("random_seed", "").strip()
     if seed:

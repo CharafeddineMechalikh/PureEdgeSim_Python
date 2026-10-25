@@ -35,7 +35,12 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "models":
         return _print_models(args.verbose)
-    return _run(args)
+    try:
+        return _run(args)
+    except (ValueError, FileNotFoundError) as error:
+        # The configuration errors already name the file and the property.
+        print(f"error: {error}", file=sys.stderr)
+        return 1
 
 
 def _print_models(verbose: bool) -> int:
