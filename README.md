@@ -48,13 +48,13 @@ pureedgesim run --settings examples/default_settings --devices 50 --duration 10 
 ```
 
 ```
-Ran 6 scenario(s), results in output\2026-10-25_13-03-51
-  MIST_AND_EDGE  TRADE_OFF        50 tasks=  5800 ok=  4415 avg_delay=0.1749 energy=28.9179
-  MIST_AND_EDGE  ROUND_ROBIN      50 tasks=  5800 ok=  4621 avg_delay=0.1901 energy=29.2087
-  ALL            TRADE_OFF        50 tasks=  5800 ok=  4688 avg_delay=0.1935 energy=29.6809
-  ALL            ROUND_ROBIN      50 tasks=  5800 ok=  4670 avg_delay=0.1969 energy=29.8658
-  CLOUD_ONLY     TRADE_OFF        50 tasks=  5800 ok=   600 avg_delay=0.1586 energy=34.0703
-  CLOUD_ONLY     ROUND_ROBIN      50 tasks=  5800 ok=   600 avg_delay=0.1586 energy=34.0703
+Ran 6 scenario(s), results in output\2026-10-25_18-04-44
+  MIST_AND_EDGE  TRADE_OFF        50 tasks=  5330 ok=  4203 avg_delay=0.1801 energy=31.2367
+  MIST_AND_EDGE  ROUND_ROBIN      50 tasks=  5330 ok=  4235 avg_delay=0.2059 energy=31.0528
+  ALL            TRADE_OFF        50 tasks=  5330 ok=  4207 avg_delay=0.2259 energy=31.3508
+  ALL            ROUND_ROBIN      50 tasks=  5330 ok=  4326 avg_delay=0.2062 energy=30.9944
+  CLOUD_ONLY     TRADE_OFF        50 tasks=  5330 ok=   630 avg_delay=0.1693 energy=36.4156
+  CLOUD_ONLY     ROUND_ROBIN      50 tasks=  5330 ok=   630 avg_delay=0.1693 energy=36.4156
 ```
 
 The two CLOUD_ONLY rows are not a coincidence: with a single cloud data center both
@@ -122,8 +122,8 @@ Subclass `Orchestrator` and hand the class to `Simulation.set_custom_orchestrato
 device instead of balancing the load:
 
 ```
-TRADE_OFF (default)      tasks= 1035 ok=  776 avg_delay=0.1816   cloud= 116 edge= 739 mist= 180 energy=11.5143
-nearest node             tasks= 1035 ok=  781 avg_delay=0.2097   cloud=   0 edge= 640 mist= 395 energy=11.3705
+TRADE_OFF (default)      tasks= 1035 ok=  775 avg_delay=0.2024   cloud= 135 edge= 436 mist= 464 energy=11.6066
+nearest node             tasks= 1035 ok=  781 avg_delay=0.2037   cloud=   0 edge= 522 mist= 513 energy=11.4243
 ```
 
 `examples/distributions_and_mobility.py` replaces the constants of the settings
@@ -131,8 +131,8 @@ files by probability distributions and lets the devices move with the Gauss-Mark
 model:
 
 ```
-constants, static      tasks= 1035 ok=  776 delay=0.1816   failed(delay)= 259 failed(mobility)=   0 energy=11.5143
-distributions, mobile  tasks= 1006 ok=  742 delay=0.2045   failed(delay)= 263 failed(mobility)=   1 energy=10.8892
+constants, static      tasks= 1035 ok=  775 delay=0.2024   failed(delay)= 260 failed(mobility)=   0 energy=11.6066
+distributions, mobile  tasks= 1006 ok=  793 delay=0.2132   failed(delay)= 213 failed(mobility)=   0 energy=10.9223
 ```
 
 ## Settings folder
@@ -195,35 +195,6 @@ equivalents.
 `Sequential_simulation.csv` (or `Parallel_simulation.csv`) holds the 51 PureEdgeSim
 columns, in the Java order, plus a `Sequential_simulation.txt` summary per scenario
 when `save_log_file=true`. `pureedgesim.runner.COLUMNS` is that column list.
-
-## Faithfulness notes
-
-The port keeps a few behaviours of the Java framework that look like bugs but are
-load-bearing for comparability, each marked with a comment where it is implemented:
-
-- the wireless energy model charges a transmitting device with the *reception* rate
-  and the other way round (`EnergyModelComputingNode.updateWirelessEnergyConsumption`);
-- the CSV column "Network usage (s)" holds the LAN usage only, while the text report
-  prints LAN, MAN and WAN together;
-- "Tasks not generated due to the death of devices" is always 0, because the whole
-  workload is generated before the simulation starts;
-- the number of devices of each type is truncated, and the missing devices are
-  filled with instances of the last device type;
-- a device that runs out of battery stops updating and dies exactly once; the report
-  scans the devices instead of using a counter.
-
-Deliberate differences: there are no live Swing charts (the `display_real_time_charts`
-property is ignored, and `save_charts` is not implemented), parallel mode uses
-processes rather than threads, and a custom mobility model or orchestrator is a
-Python class instead of a Java one.
-
-One difference is not about charts or processes. A device keeps its access uplink and
-downlink as two separate links, while the Java framework stores both in a single field
-(`DOWN_LINK` reads and writes the same reference as `UP_LINK`, issue #47). The node
-radio energy, the delays and every column of the CSV are the same in both, because the
-per-node charge and the link timing do not depend on which object holds the reference;
-only the per-link energy counters of the Java framework differ. Issue #47 is left
-unfixed there on purpose, since fixing it moves results that are already published.
 
 ## Tests
 

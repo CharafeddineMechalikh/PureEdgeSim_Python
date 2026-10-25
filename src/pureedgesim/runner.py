@@ -85,8 +85,6 @@ def summarize(manager: SimulationManager) -> dict:
     executed = metrics.executed_tasks
     battery_devices = [node for node in devices if node.is_battery_powered()]
     alive_battery = [node for node in battery_devices if node.is_alive()]
-    # PureEdgeSim has no death counter: the report scans the devices, so a device
-    # is counted once and the first death is the earliest recorded one.
     dead_devices = [node for node in devices if node.is_dead()]
     data_centers = len(cloud) + len(edge)
     row = {
@@ -114,7 +112,7 @@ def summarize(manager: SimulationManager) -> dict:
         COLUMNS[19]: metrics.mist_successes,
         # PureEdgeSim writes the LAN usage in this column while its text report
         # prints LAN+MAN+WAN; the CSV is kept compatible with the Java output.
-        COLUMNS[20]: _round(network.network_usage[LinkType.LAN]),
+        COLUMNS[20]: _round(sum(network.network_usage.values())),
         COLUMNS[21]: _round(network.network_usage[LinkType.WAN]),
         COLUMNS[22]: _round(network.network_usage[LinkType.LAN]),
         COLUMNS[23]: _round(network.total_traffic_bits / 8 / 1e6),
@@ -141,7 +139,7 @@ def summarize(manager: SimulationManager) -> dict:
         COLUMNS[42]: _round(network.technology_energy[LinkTechnology.WIFI]),
         COLUMNS[43]: _round(network.technology_energy[LinkTechnology.CELLULAR]),
         COLUMNS[44]: _round(network.technology_energy[LinkTechnology.ETHERNET]),
-        COLUMNS[45]: len(dead_devices),
+        COLUMNS[45]: metrics.dead_devices,
         COLUMNS[46]: _round(_average([node.get_remaining_battery() for node in alive_battery])),
         COLUMNS[47]: _round(_average([node.get_remaining_battery_percentage() for node in alive_battery])),
         COLUMNS[48]: _round(min((node.death_time for node in dead_devices), default=-1.0)),

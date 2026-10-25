@@ -6,7 +6,7 @@ import re
 
 import pytest
 from conftest import SETTINGS, build_manager, run_manager
-from pureedgesim import Randomness, Scenario
+from pureedgesim import NodeStatus, Randomness, Scenario
 from pureedgesim.cli import main
 from pureedgesim.network import LinkType
 from pureedgesim.runner import (COLUMNS, Simulation, build_scenarios, output_folder, run_scenario, summarize)
@@ -69,18 +69,25 @@ def test_the_counters_in_the_row_are_the_manager_metrics(parameters, files):
     assert row[COLUMNS[4]] == round(metrics.total_execution_time / metrics.executed_tasks, 4)
 
 
-def test_the_not_generated_column_stays_zero(parameters, files):
-    """PureEdgeSim generates the whole workload up front, so this counter never moves."""
-    engine, manager = run_manager(parameters, files, "ALL", "TRADE_OFF", devices=10)
-    assert summarize(manager)[COLUMNS[13]] == manager.metrics.not_generated == 0
+def test_the_not_generated_column_counts_the_tasks_of_dead_devices(parameters, files):
+    engine, manager = build_manager(parameters, files, "ALL", "TRADE_OFF", devices=10)
+    task = manager.tasks[0]
+    task.source_device.status = NodeStatus.DEAD
+    manager._send_to_orchestrator(task)
+    row = summarize(manager)
+    assert row[COLUMNS[13]] == manager.metrics.not_generated == 1
+    assert row[COLUMNS[11]] == manager.metrics.death_failures == 0
 
 
-def test_the_network_usage_column_repeats_the_lan_usage(parameters, files):
-    """The Java CSV writer puts the LAN usage in "Network usage (s)"; the port keeps it."""
+def test_the_network_usage_column_sums_the_three_networks(parameters, files):
     engine, manager = run_manager(parameters, files, "ALL", "TRADE_OFF", devices=10)
     network = manager.network
     row = summarize(manager)
-    assert row[COLUMNS[20]] == row[COLUMNS[22]] == round(network.network_usage[LinkType.LAN], 4)
+    assert row[COLUMNS[20]] == round(sum(network.network_usage.values()), 4)
+    assert row[COLUMNS[20]] == round(network.network_usage[LinkType.LAN]
+                                     + network.network_usage[LinkType.MAN]
+                                     + network.network_usage[LinkType.WAN], 4)
+    assert row[COLUMNS[22]] == round(network.network_usage[LinkType.LAN], 4)
     assert row[COLUMNS[21]] == round(network.network_usage[LinkType.WAN], 4) > 0
     assert row[COLUMNS[23]] == round(network.total_traffic_bits / 8 / 1e6, 4) > 0
 

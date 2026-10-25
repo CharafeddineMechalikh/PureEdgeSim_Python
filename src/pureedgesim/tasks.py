@@ -113,6 +113,7 @@ class DefaultTaskGenerator:
         duration = self.parameters.simulation_duration
         # The device is not assumed to be busy at the very start of the simulation.
         time = self.random.random() * max(1.0, arrival.sample())
+        time = max(1.0, float(int(time)))
         while time < duration:
             tasks.append(self._create_task(device, application, int(time), identifier))
             identifier += 1

@@ -26,14 +26,16 @@ def test_container_size_is_expressed_in_mb(running):
     assert node.get_container_mb(task) == pytest.approx(2.5)
 
 
-def test_device_percentages_are_rounded_down_then_filled_with_the_last_type(parameters, files):
+def test_device_percentages_keep_their_shares_with_the_largest_remainder(parameters, files):
     engine, manager = build_manager(parameters, files, devices=50)
-    # The scenario has five device types (18, 11, 11, 28 and 32 %). Of 50 devices
-    # that is 9, 5, 5, 14 and 16, and the two missing ones are instances of the
-    # last device type, exactly like PureEdgeSim tops the count up.
+    # The scenario has five device types (18, 11, 11, 28 and 32 %). Exact shares
+    # of 50 are 9, 5.5, 5.5, 14 and 16: the extra device goes to the first type
+    # with the largest remainder, the 11 % raspberry.
     assert len(manager.edge_devices) == 50
     assert sum(1 for n in manager.edge_devices if n.is_battery_powered()) == 9 + 5
-    assert sum(1 for n in manager.edge_devices if not n.is_sensor) == 9 + 5 + 5
+    assert sum(1 for n in manager.edge_devices if not n.is_sensor) == 9 + 6 + 5
+    assert sum(1 for n in manager.edge_devices if n.mips_per_core == 16000) == 6
+    assert sum(1 for n in manager.edge_devices if n.mips_per_core == 110000) == 5
 
 
 def test_submit_reserves_storage_and_starts_when_a_core_is_free(running):
@@ -108,16 +110,16 @@ def test_dynamic_energy_uses_the_power_delta(running):
         delta / 3600 * 1000.0 / node.total_mips)
 
 
-def test_wireless_energy_labels_are_inverted_on_purpose(running):
+def test_wireless_energy_charges_the_matching_direction(running):
     engine, manager = running
     model = manager.edge_devices[0].energy_model
     from pureedgesim.nodes import RECEPTION, TRANSMISSION
     model.network_energy_consumption = 0.0
     model.update_wireless_energy_consumption(1000.0, RECEPTION)
-    assert model.network_energy_consumption == pytest.approx(1000.0 * model.transmission_energy_per_bit)
+    assert model.network_energy_consumption == pytest.approx(1000.0 * model.reception_energy_per_bit)
     model.network_energy_consumption = 0.0
     model.update_wireless_energy_consumption(1000.0, TRANSMISSION)
-    assert model.network_energy_consumption == pytest.approx(1000.0 * model.reception_energy_per_bit)
+    assert model.network_energy_consumption == pytest.approx(1000.0 * model.transmission_energy_per_bit)
 
 
 def test_connectivity_selects_the_energy_rates(parameters, files):

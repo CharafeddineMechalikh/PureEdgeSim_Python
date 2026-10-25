@@ -52,13 +52,30 @@ class ComputingNodesGenerator:
         return node
 
     def _generate_devices(self, specs: list[DeviceSpec], device_count: int) -> None:
-        for spec in specs:
-            for _ in range(int(spec.percentage) * device_count // 100):
+        allocation = self._allocate_devices([spec.percentage for spec in specs], device_count)
+        for spec, count in zip(specs, allocation):
+            for _ in range(count):
                 self.edge_devices.append(self._create_device(spec))
-        # Integer truncation can leave the last devices missing; PureEdgeSim
-        # tops the count up with instances of the last device type.
-        for _ in range(device_count - len(self.edge_devices)):
-            self.edge_devices.append(self._create_device(specs[-1]))
+
+    @staticmethod
+    def _allocate_devices(percentages: list[float], device_count: int) -> list[int]:
+        """Apportions the devices over the types with the largest remainder method.
+
+        Every type gets the floor of its exact share, then the types with the
+        largest fractional part receive the remaining devices, so the shares are
+        respected and the total is exactly ``device_count``.
+        """
+        total = sum(max(0.0, percentage) for percentage in percentages)
+        if total <= 0 or device_count <= 0:
+            return [0] * len(percentages)
+        shares = [device_count * max(0.0, percentage) / total for percentage in percentages]
+        allocation = [int(share) for share in shares]
+        remainders = [share - count for share, count in zip(shares, allocation)]
+        for _ in range(device_count - sum(allocation)):
+            largest = max(range(len(percentages)), key=lambda index: remainders[index])
+            allocation[largest] += 1
+            remainders[largest] = -1.0
+        return allocation
 
     def _create_device(self, spec: DeviceSpec) -> ComputingNode:
         node = EdgeDevice(self.manager, 1, 1, 1, 1)

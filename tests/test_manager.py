@@ -19,7 +19,8 @@ def test_every_generated_task_ends_with_exactly_one_reason(live):
     metrics = manager.metrics
     assert metrics.generated_tasks == len(manager.tasks) > 0
     assert (metrics.succeeded_tasks + metrics.delay_failures + metrics.death_failures
-            + metrics.mobility_failures + metrics.not_executed) == metrics.generated_tasks
+            + metrics.mobility_failures + metrics.not_executed
+            + metrics.not_generated) == metrics.generated_tasks
     assert len(manager.finished_tasks) == metrics.generated_tasks
     assert all(task.failed or task.status == TaskStatus.SUCCESS for task in manager.tasks)
 
@@ -53,14 +54,17 @@ def test_the_measured_delay_is_the_sum_of_the_three_parts(live):
         sum(task.waiting_time for task in manager.tasks))
 
 
-def test_a_dead_device_fails_its_task_before_the_orchestrator(parameters, files):
+def test_a_dead_device_does_not_generate_its_task(parameters, files):
     engine, manager = build_manager(parameters, files, devices=10)
     task = manager.tasks[0]
     task.source_device.status = NodeStatus.DEAD
-    before = manager.metrics.death_failures
+    before = manager.metrics.not_generated
     manager._send_to_orchestrator(task)
     assert task.status == TaskStatus.FAILED_DUE_TO_DEVICE_DEATH
-    assert manager.metrics.death_failures == before + 1
+    # The task was never offloaded, so it is counted as not generated rather
+    # than as a failure.
+    assert manager.metrics.not_generated == before + 1
+    assert manager.metrics.death_failures == 0
     assert task.destination is None
     assert manager.metrics.executed_tasks == 0
 
@@ -243,8 +247,9 @@ def test_a_battery_that_gives_out_kills_one_device_and_its_pending_tasks(paramet
     engine.start()
     assert victim.is_dead() and 0 < victim.death_time <= engine.clock
     assert [node for node in manager.edge_devices if node.is_dead()] == [victim]
+    assert manager.metrics.dead_devices == 1
     assert manager.metrics.death_failures > 0
-    assert manager.metrics.death_failures == sum(
+    assert manager.metrics.death_failures + manager.metrics.not_generated == sum(
         1 for task in manager.tasks if task.status == TaskStatus.FAILED_DUE_TO_DEVICE_DEATH)
 
 

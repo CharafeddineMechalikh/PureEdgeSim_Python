@@ -223,7 +223,14 @@ class SimulationManager(SimEntity):
     def task_failed(self, task: Task, phase: int) -> bool:
         device, orchestrator, destination = task.source_device, task.get_orchestrator(), task.destination
         if phase == 0 and not device.is_alive():
-            return self._fail(task, TaskStatus.FAILED_DUE_TO_DEVICE_DEATH, "device dead")
+            # Died before offloading, so the task is never sent: it counts as not
+            # generated rather than failed.
+            if not task.failed:
+                task.failed = True
+                task.status = TaskStatus.FAILED_DUE_TO_DEVICE_DEATH
+                task.source_device.application_placed = False
+                self.metrics.not_generated += 1
+            return True
         if phase == 1:
             if not orchestrator.is_alive():
                 return self._fail(task, TaskStatus.FAILED_DUE_TO_DEVICE_DEATH, "orchestrator dead")
@@ -328,6 +335,7 @@ class _Metrics:
         self.death_failures = 0
         self.mobility_failures = 0
         self.not_executed = 0
+        self.dead_devices = 0
         self.cloud_tasks = 0
         self.edge_tasks = 0
         self.mist_tasks = 0

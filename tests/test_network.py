@@ -166,10 +166,9 @@ def test_a_wireless_uplink_energes_the_device(network):
     device = manager.edge_devices[0]
     before = device.energy_model.network_energy_consumption
     send(manager, 1e6, [device.up_link])
-    # The sending device is charged with the reception rate: PureEdgeSim swaps
-    # the two rates inside updatewirelessEnergyConsumption and this port keeps it.
+    # A transmitting device is charged with the transmission rate.
     assert device.energy_model.network_energy_consumption - before == pytest.approx(
-        1e6 * device.energy_model.reception_energy_per_bit)
+        1e6 * device.energy_model.transmission_energy_per_bit)
 
 
 def test_container_downloads_are_tracked_separately(network):

@@ -78,12 +78,10 @@ class EnergyModelComputingNode:
             self.reception_energy_per_bit = parameters.ethernet_energy_per_bit / 2
 
     def update_wireless_energy_consumption(self, size_in_bits: float, flag: int) -> None:
-        # The rate charged for RECEPTION is the one named transmission in the
-        # original framework, and the other way round; kept identical on purpose.
         if flag == RECEPTION:
-            self.network_energy_consumption += size_in_bits * self.transmission_energy_per_bit
-        else:
             self.network_energy_consumption += size_in_bits * self.reception_energy_per_bit
+        else:
+            self.network_energy_consumption += size_in_bits * self.transmission_energy_per_bit
 
     def add_static_energy(self, seconds: float) -> None:
         self.cpu_energy_consumption += self.idle_consumption / 3600 * seconds
@@ -228,6 +226,7 @@ class ComputingNode(SimEntity):
         if self.is_battery_empty():
             self.status = NodeStatus.DEAD
             self.death_time = self.engine.clock
+            self.manager.metrics.dead_devices += 1
 
     def process_event(self, event: Event) -> None:
         if event.tag == EventType.UPDATE_STATUS:
