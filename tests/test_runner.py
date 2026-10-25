@@ -158,6 +158,9 @@ def test_launch_writes_one_row_per_scenario_in_a_timestamped_folder(parameters, 
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}", folder.name)
     path = folder / "Sequential_simulation.csv"
     assert path.exists() and not (folder / "Parallel_simulation.csv").exists()
+    assert (folder / "run.json").is_file()
+    assert (folder / "settings" / "edge_devices.xml").read_bytes() == (
+        SETTINGS / "edge_devices.xml").read_bytes()
     with path.open(newline="", encoding="utf-8") as handle:
         written = list(csv.DictReader(handle))
     assert list(written[0]) == COLUMNS

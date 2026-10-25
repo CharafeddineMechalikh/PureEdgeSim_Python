@@ -8,6 +8,7 @@ from pathlib import Path
 from .config import ScenarioFiles, load_settings
 from .engine import Engine
 from .manager import Scenario, SimulationManager
+from .metadata import write_run_metadata
 from .network import LinkTechnology, LinkType
 from .parameters import SimulationParameters, load_parameters
 from .randomness import Randomness
@@ -190,6 +191,8 @@ class Simulation:
         folder = output_folder(self.output_folder)
         folder.mkdir(parents=True, exist_ok=True)
         self.results_folder = folder
+        write_run_metadata(self.settings_folder, folder, self.parameters.parallel_simulation,
+                           self.parameters.random_seed)
         csv_path = folder / ("Parallel_simulation.csv" if self.parameters.parallel_simulation
                              else "Sequential_simulation.csv")
         if self.parameters.parallel_simulation:

@@ -196,11 +196,23 @@ equivalents.
 columns, in the Java order, plus a `Sequential_simulation.txt` summary per scenario
 when `save_log_file=true`. `pureedgesim.runner.COLUMNS` is that column list.
 
+Every timestamped output folder also receives two provenance artifacts:
+
+- `run.json`, with the package version, the git commit of the checkout, the random
+  seed (`null` when the run was not seeded), the parallelism flag, the absolute output
+  path, and the absolute path of each settings file.
+- `settings/`, a snapshot of the five configuration files the run parsed. A run can
+  therefore be replayed with `Simulation("path/to/results/<timestamp>/settings", ...)`
+  after the original scenario files change.
+
+An unreadable or invalid settings file stops the run with a message naming the file,
+the element, and the cause; nothing is silently skipped.
+
 ## Tests
 
 ```bash
 pip install -e .[test]
-pytest              # 225 tests, the core plus the settings readers and the CLI
+pytest              # 229 tests, the core plus the settings readers and the CLI
 ```
 
 The integration tests build real managers and run them to the end, so the counters

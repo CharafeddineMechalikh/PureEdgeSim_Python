@@ -151,8 +151,16 @@ def _arrival(element: ElementTree.Element, rate: Distribution, path: Path) -> Di
                      f'"uniform", or a distribution')
 
 
+def _root(path: Path) -> ElementTree.Element:
+    """Parses an XML file and names it in the error when the markup is invalid."""
+    try:
+        return ElementTree.parse(path).getroot()
+    except ElementTree.ParseError as error:
+        raise ValueError(f"{path}: {error}") from error
+
+
 def load_applications(path: Path) -> list[Application]:
-    root = ElementTree.parse(path).getroot()
+    root = _root(path)
     applications: list[Application] = []
     for element in root.findall("application"):
         rate = _distribution(element, "rate", path)
@@ -201,13 +209,13 @@ def _datacenter_spec(element: ElementTree.Element, path: Path, name: str, locati
 
 
 def load_cloud(path: Path) -> list[DatacenterSpec]:
-    root = ElementTree.parse(path).getroot()
+    root = _root(path)
     return [_datacenter_spec(element, path, element.attrib.get("name", f"cloud {index}"), False)
             for index, element in enumerate(root.findall("datacenter"))]
 
 
 def load_edge_datacenters(path: Path) -> tuple[list[DatacenterSpec], list[tuple[str, str]]]:
-    root = ElementTree.parse(path).getroot()
+    root = _root(path)
     specs = [_datacenter_spec(element, path, element.attrib.get("name", f"dc{index + 1}"), True)
              for index, element in enumerate(root.findall("datacenter"))]
     links: list[tuple[str, str]] = []
@@ -222,7 +230,7 @@ def load_edge_datacenters(path: Path) -> tuple[list[DatacenterSpec], list[tuple[
 
 
 def load_devices(path: Path) -> list[DeviceSpec]:
-    root = ElementTree.parse(path).getroot()
+    root = _root(path)
     specs: list[DeviceSpec] = []
     for element in root.findall("device"):
         mobility = _child(element, "mobility")
