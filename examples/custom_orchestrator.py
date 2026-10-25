@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pyedgesim import (COLUMNS, DefaultOrchestrator, NodeType, Orchestrator, Simulation,
+from pureedgesim import (COLUMNS, DefaultOrchestrator, NodeType, Orchestrator, Simulation,
                        load_parameters, load_settings)
 
 SETTINGS = Path(__file__).resolve().parent / "default_settings"

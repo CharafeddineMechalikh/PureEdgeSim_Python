@@ -1,4 +1,4 @@
-"""Command line entry point: ``pyedgesim run --settings <folder>``."""
+"""Command line entry point: ``pureedgesim run --settings <folder>``."""
 from __future__ import annotations
 
 import argparse
@@ -10,8 +10,8 @@ from .runner import COLUMNS, Simulation
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="pyedgesim",
-                                     description="Run a PureEdgeSim scenario with PyEdgeSim.")
+    parser = argparse.ArgumentParser(prog="pureedgesim",
+                                     description="Run a PureEdgeSim scenario in Python.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run = subparsers.add_parser("run", help="run the scenarios of a settings folder")

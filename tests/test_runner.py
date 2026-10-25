@@ -6,10 +6,10 @@ import re
 
 import pytest
 from conftest import SETTINGS, build_manager, run_manager
-from pyedgesim import Randomness, Scenario
-from pyedgesim.cli import main
-from pyedgesim.network import LinkType
-from pyedgesim.runner import (COLUMNS, Simulation, build_scenarios, output_folder, run_scenario, summarize)
+from pureedgesim import Randomness, Scenario
+from pureedgesim.cli import main
+from pureedgesim.network import LinkType
+from pureedgesim.runner import (COLUMNS, Simulation, build_scenarios, output_folder, run_scenario, summarize)
 
 
 def sweep(parameters):

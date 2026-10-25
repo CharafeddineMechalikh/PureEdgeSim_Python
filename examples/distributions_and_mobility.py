@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pyedgesim import (COLUMNS, ExponentialDistribution, LogNormalDistribution,
+from pureedgesim import (COLUMNS, ExponentialDistribution, LogNormalDistribution,
                        NormalDistribution, Randomness, Simulation, SimulationParameters,
                        WeibullDistribution, load_parameters, load_settings)
 

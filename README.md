@@ -1,4 +1,4 @@
-# PureEdgeSim for Python
+# PureEdgeSim
 
 <p align="center">
   <a href="https://github.com/CharafeddineMechalikh/PureEdgeSim"><img src="https://img.shields.io/badge/Java%20version-PureEdgeSim-blue?logo=openjdk" alt="PureEdgeSim, the Java version"></a>
@@ -13,9 +13,8 @@ orchestration algorithms, energy models and mobility models, the same five setti
 and the same 51-column CSV, so a study run here can be placed side by side with the same
 study run in [PureEdgeSim (Java)](https://github.com/CharafeddineMechalikh/PureEdgeSim).
 
-The import name is `pyedgesim` (so `pip install`, `import` and the `pyedgesim` command
-follow the Python conventions), while the models, parameters and reported columns keep
-their PureEdgeSim names.
+Install it with `pip`, import it as `pureedgesim`, and run it with the `pureedgesim`
+command; the classes, parameters and reported columns keep their PureEdgeSim names.
 
 The core needs the Python standard library only (Python 3.10 or later). The one optional
 extra is pytest, to run the test suite. The live Swing charts of the Java framework are not
@@ -27,23 +26,23 @@ tools.
 ```bash
 git clone https://github.com/CharafeddineMechalikh/PureEdgeSim_Python.git
 cd PureEdgeSim_Python
-pip install -e .            # the library and the "pyedgesim" command
+pip install -e .            # the library and the "pureedgesim" command
 pip install -e .[test]      # plus pytest, to run the test suite
 ```
 
 Without installing, point `PYTHONPATH` at `src`:
 
 ```bash
-PYTHONPATH=src python -m pyedgesim.cli models
+PYTHONPATH=src python -m pureedgesim.cli models
 ```
 
 ## Command line
 
-`pyedgesim run` executes every scenario of a settings folder, the way the Java
+`pureedgesim run` executes every scenario of a settings folder, the way the Java
 `Simulation` does, and writes the results under a timestamped output folder.
 
 ```bash
-pyedgesim run --settings examples/default_settings --devices 50 --duration 10 \
+pureedgesim run --settings examples/default_settings --devices 50 --duration 10 \
               --architectures MIST_AND_EDGE,ALL,CLOUD_ONLY \
               --algorithms TRADE_OFF,ROUND_ROBIN --seed 7
 ```
@@ -72,7 +71,7 @@ algorithms place every task on the same node.
 | `--seed` | `random_seed`, makes the run reproducible |
 | `--parallel` | one worker process per scenario |
 
-`pyedgesim models [--verbose]` lists the mobility models that a settings folder may
+`pureedgesim models [--verbose]` lists the mobility models that a settings folder may
 name.
 
 ## Library
@@ -80,7 +79,7 @@ name.
 Run a sweep, the settings folder deciding which scenarios are executed:
 
 ```python
-from pyedgesim import COLUMNS, Simulation
+from pureedgesim import COLUMNS, Simulation
 
 simulation = Simulation("examples/default_settings", "output")
 simulation.load()
@@ -96,8 +95,8 @@ Or drive one scenario yourself, which is what you want when you plot the metrics
 a single run:
 
 ```python
-from pyedgesim import Engine, Randomness, Scenario, SimulationManager
-from pyedgesim import load_parameters, load_settings
+from pureedgesim import Engine, Randomness, Scenario, SimulationManager
+from pureedgesim import load_parameters, load_settings
 
 Randomness.set_seed(42)
 Randomness.begin_scenario(0)
@@ -195,7 +194,7 @@ equivalents.
 
 `Sequential_simulation.csv` (or `Parallel_simulation.csv`) holds the 51 PureEdgeSim
 columns, in the Java order, plus a `Sequential_simulation.txt` summary per scenario
-when `save_log_file=true`. `pyedgesim.runner.COLUMNS` is that column list.
+when `save_log_file=true`. `pureedgesim.runner.COLUMNS` is that column list.
 
 ## Faithfulness notes
 

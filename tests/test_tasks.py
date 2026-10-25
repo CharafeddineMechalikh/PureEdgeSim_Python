@@ -4,11 +4,11 @@ from __future__ import annotations
 import pytest
 
 from conftest import build_manager
-from pyedgesim import Task
-from pyedgesim.distribution import ConstantDistribution, UniformDistribution
-from pyedgesim.config import Application
-from pyedgesim.nodes import NodeType
-from pyedgesim.tasks import DefaultTaskGenerator, TaskStatus
+from pureedgesim import Task
+from pureedgesim.distribution import ConstantDistribution, UniformDistribution
+from pureedgesim.config import Application
+from pureedgesim.nodes import NodeType
+from pureedgesim.tasks import DefaultTaskGenerator, TaskStatus
 
 
 def application(rate=10, usage=100, arrival=None, length=1000.0, latency=1e9):

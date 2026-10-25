@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from pyedgesim import load_parameters, load_settings
-from pyedgesim.parameters import SimulationParameters, validate
+from pureedgesim import load_parameters, load_settings
+from pureedgesim.parameters import SimulationParameters, validate
 
 
 CLOUD_XML = """<?xml version="1.0"?>

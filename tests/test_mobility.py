@@ -5,7 +5,7 @@ import math
 
 import pytest
 
-from pyedgesim import (BrownianMobilityModel, CircularMobilityModel, DefaultMobilityModel,
+from pureedgesim import (BrownianMobilityModel, CircularMobilityModel, DefaultMobilityModel,
                        GaussMarkovMobilityModel, LevyWalkMobilityModel, Location, ManhattanMobilityModel,
                        MobilityModel, MobilityModelFactory, RandomWalkMobilityModel,
                        ReferencePointGroupMobilityModel, WaypointMobilityModel)
@@ -64,12 +64,12 @@ def test_factory_rejects_a_missing_name():
 
 def test_factory_rejects_a_class_that_is_not_a_mobility_model():
     with pytest.raises(ValueError, match="does not extend MobilityModel"):
-        MobilityModelFactory.resolve("pyedgesim.Location")
+        MobilityModelFactory.resolve("pureedgesim.Location")
 
 
 def test_factory_rejects_an_unknown_class_path():
     with pytest.raises(ValueError, match="was not found"):
-        MobilityModelFactory.resolve("pyedgesim.NopeMobilityModel")
+        MobilityModelFactory.resolve("pureedgesim.NopeMobilityModel")
 
 
 @pytest.mark.parametrize("name,options", [
@@ -288,7 +288,7 @@ def test_a_device_outside_the_coverage_has_no_data_center(parameters, files):
     parameters.edge_data_centers_range = 5.0
     manager, model = make(parameters, files, "random-walk", start=Location(1500.0, 1500.0))
     model.generate_path()
-    from pyedgesim.nodes import ComputingNode
+    from pureedgesim.nodes import ComputingNode
     assert model.get_closest_edge_data_center() is ComputingNode.NULL
 
 

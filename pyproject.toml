@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyedgesim"
+name = "pureedgesim"
 version = "0.1.0"
-description = "PureEdgeSim for Python: discrete-event simulation of cloud, edge, fog and mist computing"
+description = "PureEdgeSim: discrete-event simulation of cloud, edge, fog and mist computing, in Python"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later" }
@@ -28,7 +28,7 @@ dependencies = []
 test = ["pytest>=7"]
 
 [project.scripts]
-pyedgesim = "pyedgesim.cli:main"
+pureedgesim = "pureedgesim.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/CharafeddineMechalikh/PureEdgeSim_Python"

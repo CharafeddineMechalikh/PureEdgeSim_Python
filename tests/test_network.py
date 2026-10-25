@@ -4,8 +4,8 @@ from __future__ import annotations
 import pytest
 
 from conftest import build_manager
-from pyedgesim import LinkTechnology, LinkType, Task
-from pyedgesim.nodes import NodeType
+from pureedgesim import LinkTechnology, LinkType, Task
+from pureedgesim.nodes import NodeType
 
 
 @pytest.fixture

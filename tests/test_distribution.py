@@ -8,14 +8,14 @@ import xml.etree.ElementTree as ElementTree
 
 import pytest
 
-from pyedgesim.distribution import (BernoulliDistribution, BetaDistribution, BinomialDistribution,
+from pureedgesim.distribution import (BernoulliDistribution, BetaDistribution, BinomialDistribution,
                                     CategoricalDistribution, ConstantDistribution,
                                     DistributionFactory, ErlangDistribution, ExponentialDistribution,
                                     GammaDistribution, GeometricDistribution, LogNormalDistribution,
                                     NormalDistribution, ParetoDistribution, PoissonDistribution,
                                     ScaledDistribution, TriangularDistribution, UniformDistribution,
                                     WeibullDistribution, distribution_from_element)
-from pyedgesim.randomness import Randomness
+from pureedgesim.randomness import Randomness
 
 
 def make_rng(seed=7):

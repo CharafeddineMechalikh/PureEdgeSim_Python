@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from pyedgesim import (Engine, Randomness, Scenario, SimulationManager, load_parameters, load_settings)
+from pureedgesim import (Engine, Randomness, Scenario, SimulationManager, load_parameters, load_settings)
 
 SETTINGS = Path(__file__).resolve().parents[1] / "examples" / "default_settings"
 
@@ -16,7 +16,7 @@ def settings_folder() -> Path:
 
 
 @pytest.fixture
-def parameters() -> "pyedgesim.SimulationParameters":
+def parameters() -> "pureedgesim.SimulationParameters":
     values = load_parameters(SETTINGS / "simulation_parameters.properties")
     # Two full minutes: the default applications generate one burst of tasks per
     # minute, so a shorter simulation would produce no workload at all.
@@ -29,7 +29,7 @@ def parameters() -> "pyedgesim.SimulationParameters":
 
 
 @pytest.fixture
-def files() -> "pyedgesim.ScenarioFiles":
+def files() -> "pureedgesim.ScenarioFiles":
     return load_settings(SETTINGS)
 
 

@@ -1,4 +1,4 @@
-"""PyEdgeSim: a Python port of the PureEdgeSim edge/cloud simulation framework.
+"""PureEdgeSim: the Python implementation of the PureEdgeSim simulation framework.
 
 The core runs on the standard library only. Read the settings folder of an
 existing PureEdgeSim scenario and obtain the same CSV columns.

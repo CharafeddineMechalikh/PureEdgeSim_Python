@@ -4,8 +4,8 @@ from __future__ import annotations
 import pytest
 
 from conftest import build_manager
-from pyedgesim import NodeType, Task
-from pyedgesim.orchestrator import LAYERS, WEIGHTS, Orchestrator
+from pureedgesim import NodeType, Task
+from pureedgesim.orchestrator import LAYERS, WEIGHTS, Orchestrator
 
 
 def make_task(device, length=1000.0):
@@ -152,7 +152,7 @@ def test_an_edge_data_center_is_only_reachable_through_its_own_access(orch):
 
 def test_a_dead_device_is_never_a_candidate(orch):
     engine, manager, orchestrator = orch
-    from pyedgesim.nodes import NodeStatus
+    from pureedgesim.nodes import NodeStatus
     manager.parameters.edge_devices_range = 1e9
     orchestrator.initialize("MIST_ONLY")
     device = manager.edge_devices[0]
@@ -162,7 +162,7 @@ def test_a_dead_device_is_never_a_candidate(orch):
 
 
 def test_no_eligible_node_means_no_destination(orch):
-    from pyedgesim.nodes import NodeStatus
+    from pureedgesim.nodes import NodeStatus
     engine, manager, orchestrator = orch
     orchestrator.initialize("MIST_ONLY")
     for candidate in orchestrator.candidates:

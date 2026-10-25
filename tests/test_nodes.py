@@ -4,8 +4,8 @@ from __future__ import annotations
 import pytest
 
 from conftest import build_manager
-from pyedgesim.nodes import BITS_PER_MB, ComputingNode, NodeStatus, NodeType
-from pyedgesim.tasks import Task
+from pureedgesim.nodes import BITS_PER_MB, ComputingNode, NodeStatus, NodeType
+from pureedgesim.tasks import Task
 
 
 @pytest.fixture
@@ -111,7 +111,7 @@ def test_dynamic_energy_uses_the_power_delta(running):
 def test_wireless_energy_labels_are_inverted_on_purpose(running):
     engine, manager = running
     model = manager.edge_devices[0].energy_model
-    from pyedgesim.nodes import RECEPTION, TRANSMISSION
+    from pureedgesim.nodes import RECEPTION, TRANSMISSION
     model.network_energy_consumption = 0.0
     model.update_wireless_energy_consumption(1000.0, RECEPTION)
     assert model.network_energy_consumption == pytest.approx(1000.0 * model.transmission_energy_per_bit)

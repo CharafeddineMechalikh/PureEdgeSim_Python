@@ -1,7 +1,7 @@
 """The discrete-event engine: ordering, clock, termination and removal."""
 from __future__ import annotations
 
-from pyedgesim import Engine, EventType, SimEntity
+from pureedgesim import Engine, EventType, SimEntity
 
 
 class Recorder(SimEntity):
