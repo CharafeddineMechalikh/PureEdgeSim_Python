@@ -228,13 +228,44 @@ pytest              # 225 tests, the core plus the settings readers and the CLI
 The integration tests build real managers and run them to the end, so the counters
 they check are the ones the simulation actually produced.
 
+## Citation
+
+**If you use PureEdgeSim in your research, please cite the following papers. Kindly cite the papers rather than the GitHub repository.** This Python version is the same simulator, so it is cited with the same papers; add a link to the [Python repository](https://github.com/CharafeddineMechalikh/PureEdgeSim_Python) when you report which implementation you ran.
+
+Mechalikh, C., Taktak, H., & Moussa, F. (2021). PureEdgeSim: A simulation framework for performance evaluation of cloud, edge and mist computing environments. *Computer Science and Information Systems*, 18(1), 43-66. https://doi.org/10.2298/CSIS200301042M
+
+Mechalikh, C., Silem, A. E. H., Safavifar, Z., & Golpayegani, F. (2025). Quality matters: A comprehensive comparative study of edge computing simulators. *Simulation Modelling Practice and Theory*, 138, 103042. https://doi.org/10.1016/j.simpat.2024.103042
+
+BibTeX:
+
+```gradle
+@article{mechalikh2021pureedgesim,
+  title   = {PureEdgeSim: A simulation framework for performance evaluation of cloud, edge and mist computing environments},
+  author  = {Mechalikh, Charafeddine and Taktak, Hajer and Moussa, Faouzi},
+  journal = {Computer Science and Information Systems},
+  volume  = {18},
+  number  = {1},
+  pages   = {43--66},
+  year    = {2021},
+  doi     = {10.2298/CSIS200301042M}
+}
+
+@article{mechalikh2025quality,
+  title   = {Quality matters: A comprehensive comparative study of edge computing simulators},
+  author  = {Mechalikh, Charafeddine and Silem, Abd El Heq and Safavifar, Zahra and Golpayegani, Fatemeh},
+  journal = {Simulation Modelling Practice and Theory},
+  volume  = {138},
+  pages   = {103042},
+  year    = {2025},
+  doi     = {10.1016/j.simpat.2024.103042}
+}
+```
+
 ## See also
 
 - [PureEdgeSim (Java)](https://github.com/CharafeddineMechalikh/PureEdgeSim): the original
   framework, its live charts and its [documentation](https://github.com/CharafeddineMechalikh/PureEdgeSim/tree/master/docs).
 - [Issues](https://github.com/CharafeddineMechalikh/PureEdgeSim_Python/issues) for this port.
-- If you use this simulator in a paper, cite the PureEdgeSim framework papers listed in the
-  Java README, and add a link to the repository you ran.
 
 ## License
 
