@@ -217,6 +217,14 @@ property is ignored, and `save_charts` is not implemented), parallel mode uses
 processes rather than threads, and a custom mobility model or orchestrator is a
 Python class instead of a Java one.
 
+One difference is not about charts or processes. A device keeps its access uplink and
+downlink as two separate links, while the Java framework stores both in a single field
+(`DOWN_LINK` reads and writes the same reference as `UP_LINK`, issue #47). The node
+radio energy, the delays and every column of the CSV are the same in both, because the
+per-node charge and the link timing do not depend on which object holds the reference;
+only the per-link energy counters of the Java framework differ. Issue #47 is left
+unfixed there on purpose, since fixing it moves results that are already published.
+
 ## Tests
 
 ```bash
