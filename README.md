@@ -47,7 +47,7 @@ pureedgesim run --settings examples/default_settings --devices 50 --duration 10 
               --algorithms TRADE_OFF,ROUND_ROBIN --seed 7
 ```
 
-```
+```text
 Ran 6 scenario(s), results in output\2026-10-25_18-04-44
   MIST_AND_EDGE  TRADE_OFF        50 tasks=  5330 ok=  4203 avg_delay=0.1801 energy=31.2367
   MIST_AND_EDGE  ROUND_ROBIN      50 tasks=  5330 ok=  4235 avg_delay=0.2059 energy=31.0528
@@ -121,7 +121,7 @@ Subclass `Orchestrator` and hand the class to `Simulation.set_custom_orchestrato
 `examples/custom_orchestrator.py` places every task on the node closest to its
 device instead of balancing the load:
 
-```
+```text
 TRADE_OFF (default)      tasks= 1035 ok=  775 avg_delay=0.2024   cloud= 135 edge= 436 mist= 464 energy=11.6066
 nearest node             tasks= 1035 ok=  781 avg_delay=0.2037   cloud=   0 edge= 522 mist= 513 energy=11.4243
 ```
@@ -130,7 +130,7 @@ nearest node             tasks= 1035 ok=  781 avg_delay=0.2037   cloud=   0 edge
 files by probability distributions and lets the devices move with the Gauss-Markov
 model:
 
-```
+```text
 constants, static      tasks= 1035 ok=  775 delay=0.2024   failed(delay)= 260 failed(mobility)=   0 energy=11.6066
 distributions, mobile  tasks= 1006 ok=  793 delay=0.2132   failed(delay)= 213 failed(mobility)=   0 energy=10.9223
 ```
@@ -228,7 +228,7 @@ Mechalikh, C., Silem, A. E. H., Safavifar, Z., & Golpayegani, F. (2025). Quality
 
 **BibTeX:**
 
-```gradle
+```bibtex
 @article{mechalikh2021pureedgesim,
   title   = {PureEdgeSim: A simulation framework for performance evaluation of cloud, edge and mist computing environments},
   author  = {Mechalikh, Charafeddine and Taktak, Hajer and Moussa, Faouzi},
