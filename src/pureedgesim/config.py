@@ -39,6 +39,22 @@ def _boolean(parent: ElementTree.Element, name: str, default: bool = False) -> b
 
 
 @dataclass
+class Subtask:
+    """One node of a service graph: a task that waits for its dependencies."""
+    name: str
+    dependencies: tuple[str, ...]
+    latency: Distribution
+    container_size: Distribution
+    request_size: Distribution
+    results_size: Distribution
+    task_length: Distribution
+
+    @property
+    def is_root(self) -> bool:
+        return not self.dependencies
+
+
+@dataclass
 class Application:
     name: str
     type: str
@@ -50,6 +66,11 @@ class Application:
     results_size: Distribution
     task_length: Distribution
     arrival_distribution: Distribution | None = None
+    subtasks: tuple[Subtask, ...] = ()
+
+    @property
+    def has_subtasks(self) -> bool:
+        return bool(self.subtasks)
 
     def get_rate(self) -> float:
         return self.rate.mean()
@@ -159,12 +180,120 @@ def _root(path: Path) -> ElementTree.Element:
         raise ValueError(f"{path}: {error}") from error
 
 
+SUBTASK_ATTRIBUTES = {"name", "depends_on", "task_length", "request_size", "results_size", "container_size",
+                      "latency"}
+
+
+def _subtask_error(application: str, subtask: str, reason: str) -> str:
+    return f'the "{subtask}" subtask of the "{application}" application {reason}'
+
+
+def _subtask_dependencies(element: ElementTree.Element, name: str, application: str, path: Path) -> tuple[str, ...]:
+    """The comma separated depends_on attribute, empty for a root subtask."""
+    raw = (element.attrib.get("depends_on") or "").strip()
+    if not raw:
+        return ()
+    dependencies: list[str] = []
+    for part in raw.split(","):
+        dependency = part.strip()
+        if not dependency:
+            raise ValueError(f'{path}: ' + _subtask_error(application, name,
+                                                           'has an empty name in its "depends_on" attribute'))
+        if dependency == name:
+            raise ValueError(f"{path}: " + _subtask_error(application, name, "cannot depend on itself"))
+        if dependency not in dependencies:
+            dependencies.append(dependency)
+    return tuple(dependencies)
+
+
+def _subtask_distribution(element: ElementTree.Element, attribute: str, inherited: Distribution, scale: float,
+                          application: str, name: str, path: Path) -> Distribution:
+    """A subtask attribute overrides the application value; an empty one inherits it."""
+    from .distribution import ConstantDistribution
+    raw = (element.attrib.get(attribute) or "").strip()
+    if not raw:
+        return inherited
+    try:
+        value = float(raw)
+    except ValueError as error:
+        raise ValueError(f'{path}: ' + _subtask_error(application, name,
+                                                      f'has a non-numeric "{attribute}" value "{raw}"')) from error
+    if value <= 0 or value == float("inf"):
+        raise ValueError(f"{path}: " + _subtask_error(application, name,
+                                                      f'has an invalid "{attribute}" value "{raw}", expected a '
+                                                      f"positive number"))
+    return ConstantDistribution(value * scale)
+
+
+def _subtasks(element: ElementTree.Element, application: "Application", path: Path) -> tuple[Subtask, ...]:
+    """Reads the optional <subtask> elements of an application and validates the graph."""
+    elements = element.findall("subtask")
+    if not elements:
+        return ()
+    subtasks: list[Subtask] = []
+    names: set[str] = set()
+    for index, subtask in enumerate(elements):
+        name = (subtask.attrib.get("name") or "").strip()
+        display = name or f"subtask {index + 1}"
+        for attribute in subtask.attrib:
+            if attribute not in SUBTASK_ATTRIBUTES:
+                raise ValueError(f"{path}: " + _subtask_error(application.name, display,
+                                                              f'has an unknown attribute "{attribute}", expected '
+                                                              + ", ".join(sorted(SUBTASK_ATTRIBUTES))))
+        if not name:
+            raise ValueError(f"{path}: " + _subtask_error(application.name, display,
+                                                          'has no "name" attribute'))
+        if name in names:
+            raise ValueError(f"{path}: " + _subtask_error(application.name, name, "is declared more than once"))
+        names.add(name)
+        subtasks.append(Subtask(
+            name=name,
+            dependencies=_subtask_dependencies(subtask, name, application.name, path),
+            latency=_subtask_distribution(subtask, "latency", application.latency, 1, application.name, name, path),
+            container_size=_subtask_distribution(subtask, "container_size", application.container_size,
+                                                 KILOBYTES_TO_BITS, application.name, name, path),
+            request_size=_subtask_distribution(subtask, "request_size", application.request_size,
+                                               KILOBYTES_TO_BITS, application.name, name, path),
+            results_size=_subtask_distribution(subtask, "results_size", application.results_size,
+                                               KILOBYTES_TO_BITS, application.name, name, path),
+            task_length=_subtask_distribution(subtask, "task_length", application.task_length, 1, application.name,
+                                              name, path),
+        ))
+    _check_graph(subtasks, application.name, path)
+    return tuple(subtasks)
+
+
+def _check_graph(subtasks: list[Subtask], application: str, path: Path) -> None:
+    """Rejects unknown dependencies and cycles (a topological sort that never empties)."""
+    by_name = {subtask.name: subtask for subtask in subtasks}
+    for subtask in subtasks:
+        for dependency in subtask.dependencies:
+            if dependency not in by_name:
+                raise ValueError(f"{path}: " + _subtask_error(application, subtask.name,
+                                                              f'unknown dependency "{dependency}"'))
+    remaining = {subtask.name: len(subtask.dependencies) for subtask in subtasks}
+    ready = [subtask for subtask in subtasks if not subtask.dependencies]
+    visited = 0
+    while ready:
+        current = ready.pop()
+        visited += 1
+        for subtask in subtasks:
+            if current.name in subtask.dependencies:
+                remaining[subtask.name] -= 1
+                if remaining[subtask.name] == 0:
+                    ready.append(subtask)
+    if visited != len(subtasks):
+        cyclic = ", ".join(name for name, count in remaining.items() if count > 0)
+        raise ValueError(f"{path}: " + _subtask_error(application, cyclic,
+                                                      "is part of a dependency cycle"))
+
+
 def load_applications(path: Path) -> list[Application]:
     root = _root(path)
     applications: list[Application] = []
     for element in root.findall("application"):
         rate = _distribution(element, "rate", path)
-        applications.append(Application(
+        application = Application(
             name=element.attrib.get("name", element.attrib.get("id", f"application {len(applications)}")),
             type=_text(element, "type", "Unknown"),
             rate=rate,
@@ -175,7 +304,9 @@ def load_applications(path: Path) -> list[Application]:
             results_size=_distribution(element, "results_size", path, scale=KILOBYTES_TO_BITS),
             task_length=_distribution(element, "task_length", path),
             arrival_distribution=_arrival(element, rate, path),
-        ))
+        )
+        application.subtasks = _subtasks(element, application, path)
+        applications.append(application)
     if not applications:
         raise ValueError(f"{path}: no <application> element found")
     for application in applications:

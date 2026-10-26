@@ -1,6 +1,6 @@
 """A custom placement policy: give every task to the node closest to its device.
 
-    python examples/custom_orchestrator.py
+    python examples/custom_orchestrator/custom_orchestrator.py
 
 The TRADE_OFF algorithm of PureEdgeSim balances the load and the CPU speed of each
 candidate. This example replaces it by the nearest node, so a mist device wins
@@ -13,7 +13,7 @@ from pathlib import Path
 from pureedgesim import (COLUMNS, DefaultOrchestrator, NodeType, Orchestrator, Simulation,
                        load_parameters, load_settings)
 
-SETTINGS = Path(__file__).resolve().parent / "default_settings"
+SETTINGS = Path(__file__).resolve().parents[1] / "default_settings"
 CLOUD_IS_FAR = 1e9
 
 
@@ -47,8 +47,8 @@ def run(label: str, orchestrator: type[Orchestrator] = DefaultOrchestrator) -> d
     simulation.set_custom_orchestrator(orchestrator)
     row = simulation.launch()[0]
     print(f"{label:<24} tasks={row[COLUMNS[7]]:>5} ok={row[COLUMNS[8]]:>5} "
-          f"avg_delay={row[COLUMNS[4]]:<8} cloud={row[COLUMNS[14]]:>4} edge={row[COLUMNS[16]]:>4} "
-          f"mist={row[COLUMNS[18]]:>4} energy={row[COLUMNS[31]]}")
+          f"avg_delay={row[COLUMNS[4]]:<8} cloud={row[COLUMNS[15]]:>4} edge={row[COLUMNS[17]]:>4} "
+          f"mist={row[COLUMNS[19]]:>4} energy={row[COLUMNS[32]]}")
     return row
 
 

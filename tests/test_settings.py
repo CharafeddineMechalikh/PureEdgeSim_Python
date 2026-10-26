@@ -269,3 +269,97 @@ def test_edge_data_center_without_a_location_is_rejected(tmp_path):
 def test_shipped_examples_are_loadable(settings_folder):
     files = load_settings(settings_folder)
     assert files.applications and files.devices and files.edge_datacenters
+
+
+def test_the_partitioning_examples_load_their_service_graph():
+    folder = Path(__file__).resolve().parents[1] / "examples" / "partitioning_settings"
+    parameters = load_parameters(folder / "simulation_parameters.properties")
+    files = load_settings(folder)
+    assert parameters.orchestration_architectures == ["ALL"]
+    assert parameters.random_seed == 42
+    assert files.man_links == [("dc1", "dc2"), ("dc2", "dc3"), ("dc3", "dc4"), ("dc4", "dc1")]
+    graph = files.applications[0]
+    assert graph.has_subtasks and len(graph.subtasks) == 7
+    assert {subtask.name for subtask in graph.subtasks} == {
+        "capture", "preprocess", "detect", "classify", "track", "aggregate", "notify"}
+
+
+# ---------------------------------------------------------------------------
+# Service graphs
+# ---------------------------------------------------------------------------
+
+GRAPH_APPLICATION = ('<application name="Video"><type>Real-time</type><rate>60</rate>'
+                     '<usage_percentage>100</usage_percentage><latency>2</latency>'
+                     '<container_size>100</container_size><request_size>10</request_size>'
+                     '<results_size>20</results_size><task_length>1000</task_length>{subtasks}'
+                     '</application>')
+
+
+def load_applications_xml(tmp_path, subtasks: str):
+    path = tmp_path / "applications.xml"
+    graph_file = ('<?xml version="1.0"?><applications>' + GRAPH_APPLICATION + '</applications>')
+    path.write_text(graph_file.format(subtasks=subtasks), encoding="utf-8")
+    from pureedgesim.config import load_applications
+    return load_applications(path)
+
+
+def test_an_application_without_subtask_elements_remains_a_single_task(tmp_path):
+    application = load_applications_xml(tmp_path, "")[0]
+    assert application.has_subtasks is False
+    assert application.subtasks == ()
+
+
+def test_a_service_graph_inherits_the_application_values(tmp_path):
+    application = load_applications_xml(
+        tmp_path,
+        '<subtask name="capture"/>'
+        '<subtask name="detect" depends_on="capture"/>'
+        '<subtask name="alert" depends_on="detect"/>')[0]
+    assert application.has_subtasks is True
+    assert [subtask.name for subtask in application.subtasks] == ["capture", "detect", "alert"]
+    assert application.subtasks[0].is_root
+    assert application.subtasks[1].dependencies == ("capture",)
+    assert application.subtasks[2].dependencies == ("detect",)
+    for subtask in application.subtasks:
+        assert subtask.task_length.mean() == 1000
+        assert subtask.latency.mean() == 2
+        assert subtask.container_size.mean() == 100 * 8000
+        assert subtask.request_size.mean() == 10 * 8000
+        assert subtask.results_size.mean() == 20 * 8000
+
+
+def test_subtask_attributes_override_the_application_values(tmp_path):
+    application = load_applications_xml(
+        tmp_path,
+        '<subtask name="heavy" latency="1.5" task_length="5000" request_size="30" '
+        'results_size="40" container_size="200"/>')[0]
+    subtask = application.subtasks[0]
+    assert subtask.latency.mean() == 1.5
+    assert subtask.task_length.mean() == 5000
+    assert subtask.request_size.mean() == 30 * 8000
+    assert subtask.results_size.mean() == 40 * 8000
+    assert subtask.container_size.mean() == 200 * 8000
+
+
+def test_a_subtask_may_depend_on_several_others(tmp_path):
+    application = load_applications_xml(
+        tmp_path,
+        '<subtask name="a"/><subtask name="b"/><subtask name="join" depends_on="a, b, a"/>')[0]
+    assert application.subtasks[2].dependencies == ("a", "b")
+
+
+@pytest.mark.parametrize("subtasks, message", [
+    ('<subtask depends_on="a"/>', "has no"),
+    ('<subtask name="a"/><subtask name="a"/>', "declared more than once"),
+    ('<subtask name="a" length="10"/>', "unknown attribute"),
+    ('<subtask name="a" depends_on="missing"/>', "unknown dependency"),
+    ('<subtask name="a" depends_on="a"/>', "cannot depend on itself"),
+    ('<subtask name="a"/><subtask name="b" depends_on="a,"/>', "empty name"),
+    ('<subtask name="a" depends_on="b"/><subtask name="b" depends_on="a"/>', "dependency cycle"),
+    ('<subtask name="a" task_length="0"/>', "invalid"),
+    ('<subtask name="a" latency="-1"/>', "invalid"),
+    ('<subtask name="a" request_size="fast"/>', "non-numeric"),
+])
+def test_a_broken_service_graph_is_rejected(tmp_path, subtasks, message):
+    with pytest.raises(ValueError, match=message):
+        load_applications_xml(tmp_path, subtasks)

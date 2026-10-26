@@ -117,22 +117,51 @@ print(manager.metrics.cloud_tasks, manager.metrics.edge_tasks, manager.metrics.m
 
 ## Custom policies
 
-Subclass `Orchestrator` and hand the class to `Simulation.set_custom_orchestrator`.
-`examples/custom_orchestrator.py` places every task on the node closest to its
-device instead of balancing the load:
+Every runnable example has its own folder and README, indexed in
+[`examples/`](examples/README.md). Subclass `Orchestrator` and hand the class to
+`Simulation.set_custom_orchestrator`.
+[`examples/custom_orchestrator/`](examples/custom_orchestrator/README.md) places
+every task on the node closest to its device instead of balancing the load:
 
 ```text
 TRADE_OFF (default)      tasks= 1035 ok=  775 avg_delay=0.2024   cloud= 135 edge= 436 mist= 464 energy=11.6066
 nearest node             tasks= 1035 ok=  781 avg_delay=0.2037   cloud=   0 edge= 522 mist= 513 energy=11.4243
 ```
 
-`examples/distributions_and_mobility.py` replaces the constants of the settings
-files by probability distributions and lets the devices move with the Gauss-Markov
-model:
+[`examples/distributions_and_mobility/`](examples/distributions_and_mobility/README.md)
+replaces the constants of the settings files by probability distributions and
+lets the devices move with the Gauss-Markov model:
 
 ```text
 constants, static      tasks= 1035 ok=  775 delay=0.2024   failed(delay)= 260 failed(mobility)=   0 energy=11.6066
 distributions, mobile  tasks= 1006 ok=  793 delay=0.2132   failed(delay)= 213 failed(mobility)=   0 energy=10.9223
+```
+
+[`examples/graph_partitioning/`](examples/graph_partitioning/README.md) and
+[`examples/genetic_partitioning/`](examples/genetic_partitioning/README.md)
+partition a service graph instead of treating one request as one task. Both run
+the video analytics pipeline of `examples/partitioning_settings` (seven subtasks)
+and share the solvers in `src/pureedgesim/partitioning.py`:
+
+- the first cuts every connected component into balanced partitions (heaviest step
+  first, then Kernighan-Lin style pair swaps that remove dependency edges) and maps the
+  partitions to mist, edge, and cloud;
+- the second searches the node of every subtask with a genetic algorithm whose fitness
+  estimates the pipeline makespan, the result transfers, and the load imbalance.
+
+Each orchestrator clears the application placement after its decision, so every subtask
+is routed on its own:
+
+```text
+GraphPartitioningOrchestrator - Application 0 (Soft Real-time): 3 partitions, cut 4 edges (720000 bits per request)
+  P0.0 ['detect'] (4000 MI)
+  P0.1 ['classify'] (2500 MI)
+  P0.2 ['capture', 'preprocess', 'track', 'aggregate', 'notify'] (1950 MI)
+tasks= 9600 ok= 9600 avg_delay=0.024    cloud=3537 edge=4350 mist=1713 failed(dependency)=   0 energy=49.3512
+
+GeneticOrchestrator - Application 0 (Soft Real-time): fitness 0.0768 (makespan 0.0697 s, transfers 0.0011 s, imbalance 0.6244)
+  {'capture': 'Mist#65', 'preprocess': 'Mist#65', 'detect': 'Mist#64', 'classify': 'Mist#54', 'track': 'Edge#2', 'aggregate': 'Mist#54', 'notify': 'Mist#54'}
+tasks= 9600 ok= 9600 avg_delay=0.0252 cloud= 984 edge=5861 mist=2755 failed(dependency)=   0 energy=49.2382
 ```
 
 ## Settings folder
@@ -146,7 +175,7 @@ The five files are the PureEdgeSim ones, read by `load_settings` and
 | `edge_devices.xml` | device types, hardware, battery, mobility |
 | `edge_datacenters.xml` | edge servers, their positions and MAN links |
 | `cloud.xml` | the cloud data center |
-| `applications.xml` | task rates, sizes, lengths and arrival patterns |
+| `applications.xml` | task rates, sizes, lengths, arrival patterns and service graphs |
 
 Any numeric element may carry a distribution instead of a value, with the same
 attributes as the Java framework:
@@ -161,6 +190,42 @@ Supported names: `constant`, `uniform`, `triangular`, `normal`, `lognormal`,
 `exponential`, `erlang`, `gamma`, `weibull`, `pareto`, `beta`, `bernoulli`,
 `binomial`, `geometric`, `poisson`, `categorical`. Sizes are read in kilobytes and
 stored in bits, task lengths in million instructions.
+
+### Service graphs
+
+An application can describe a multi-stage service with `<subtask>` elements instead
+of a single task:
+
+```xml
+<application name="Video analytics">
+    <type>Soft Real-time</type><rate>10</rate><usage_percentage>100</usage_percentage>
+    <latency>0.5</latency><container_size>1500</container_size>
+    <request_size>1500</request_size><results_size>50</results_size>
+    <task_length>5000</task_length>
+    <subtask name="capture" task_length="500"/>
+    <subtask name="detect" depends_on="capture"/>
+    <subtask name="alert" depends_on="detect" request_size="10"/>
+</application>
+```
+
+Each request produces one task per subtask. Only the roots are submitted at the
+request time; a subtask enters the simulation when every name in its `depends_on`
+attribute has returned its results. `task_length`, `request_size`, `results_size`,
+`container_size`, and `latency` override the application value for that subtask, and
+omitted attributes inherit it. Names must be unique, every dependency must exist, and
+the graph must be acyclic; a violation raises a `ValueError` naming the file,
+application, and subtask.
+
+When a subtask fails, its whole subtree fails with
+`FAILED_BECAUSE_DEPENDENCY_FAILED` and is counted in the "Tasks not executed because a
+dependency failed" column. Applications without `<subtask>` elements produce exactly
+one independent task per request, as before.
+
+The application placement is shared by default: the first subtask decides where the
+application runs, and the following subtasks reuse that destination. An orchestrator
+that routes subtasks to different nodes clears the placement after each decision with
+`task.source_device.application_placed = False`. The two partitioning examples below
+do that.
 
 Mobility models are selected with the `model` attribute of the `<mobility>` element,
 and their options are extra attributes:
@@ -192,7 +257,7 @@ equivalents.
 
 ## Output
 
-`Sequential_simulation.csv` (or `Parallel_simulation.csv`) holds the 51 PureEdgeSim
+`Sequential_simulation.csv` (or `Parallel_simulation.csv`) holds the 52 PureEdgeSim
 columns, in the Java order, plus a `Sequential_simulation.txt` summary per scenario
 when `save_log_file=true`. `pureedgesim.runner.COLUMNS` is that column list.
 
@@ -212,7 +277,7 @@ the element, and the cause; nothing is silently skipped.
 
 ```bash
 pip install -e .[test]
-pytest              # 229 tests, the core plus the settings readers and the CLI
+pytest              # 278 tests, the core, the settings readers, the CLI, and the examples
 ```
 
 The integration tests build real managers and run them to the end, so the counters

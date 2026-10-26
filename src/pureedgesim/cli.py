@@ -79,7 +79,7 @@ def _run(args: argparse.Namespace) -> int:
         algorithm = f"{row[COLUMNS[1]]:<12}"
         devices = f"{row[COLUMNS[2]]:>6d}"
         print(f"  {architecture} {algorithm} {devices} tasks={row[COLUMNS[7]]:>6d} "
-              f"ok={row[COLUMNS[8]]:>6d} avg_delay={row[COLUMNS[4]]} energy={row[COLUMNS[31]]}")
+              f"ok={row[COLUMNS[8]]:>6d} avg_delay={row[COLUMNS[4]]} energy={row[COLUMNS[32]]}")
     return 0
 
 

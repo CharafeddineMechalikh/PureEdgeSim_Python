@@ -269,3 +269,59 @@ def test_a_short_run_ends_at_the_duration_when_the_workload_is_not_drained(param
     parameters.wait_for_all_tasks = False
     engine, manager = run_manager(parameters, files, "ALL", "TRADE_OFF", devices=20)
     assert engine.clock <= manager.parameters.simulation_duration + 1
+
+
+# ---------------------------------------------------------------------------
+# Service graphs
+# ---------------------------------------------------------------------------
+
+def graph_files(files, latency=10):
+    from dataclasses import replace
+
+    from pureedgesim.config import Application, Subtask
+    from pureedgesim.distribution import ConstantDistribution
+
+    def node(name, dependencies=(), length=100.0):
+        return Subtask(name=name, dependencies=dependencies, latency=ConstantDistribution(latency),
+                       container_size=ConstantDistribution(8e6), request_size=ConstantDistribution(8e3),
+                       results_size=ConstantDistribution(8e3), task_length=ConstantDistribution(length))
+
+    application = Application(name="pipeline", type="pipeline", rate=ConstantDistribution(5),
+                              usage_percentage=100, latency=ConstantDistribution(latency),
+                              container_size=ConstantDistribution(8e6), request_size=ConstantDistribution(8e3),
+                              results_size=ConstantDistribution(8e3), task_length=ConstantDistribution(100),
+                              subtasks=(node("capture"), node("detect", ("capture",), 500.0),
+                                        node("alert", ("detect",), 50.0)))
+    return replace(files, applications=[application])
+
+
+def test_the_subtasks_of_a_service_graph_run_in_dependency_order(parameters, files):
+    engine, manager = run_manager(parameters, graph_files(files), devices=10)
+    metrics = manager.metrics
+    assert metrics.generated_tasks == len(manager.tasks) > 0
+    assert metrics.succeeded_tasks == metrics.generated_tasks
+    assert metrics.dependency_failures == 0
+    assert engine.running is False
+    for task in manager.tasks:
+        for parent in task.dependencies:
+            assert parent.execution_finish_time <= task.time
+
+
+def test_a_failed_subtask_cancels_the_subtasks_that_depend_on_it(parameters, files):
+    engine, manager = run_manager(parameters, graph_files(files, latency=0), devices=10)
+    metrics = manager.metrics
+    roots = [task for task in manager.tasks if not task.dependencies]
+    dependents = [task for task in manager.tasks if task.dependencies]
+    assert all(task.failed for task in roots)
+    assert metrics.dependency_failures == len(dependents)
+    assert all(task.status == TaskStatus.FAILED_BECAUSE_DEPENDENCY_FAILED for task in dependents)
+    assert all(task.failed and task.id not in manager.finished_tasks for task in dependents)
+    assert engine.running is False
+
+
+def test_a_graph_scenario_reports_every_task_exactly_once(parameters, files):
+    engine, manager = run_manager(parameters, graph_files(files, latency=0), devices=10)
+    metrics = manager.metrics
+    assert (metrics.succeeded_tasks + metrics.delay_failures + metrics.death_failures
+            + metrics.mobility_failures + metrics.not_executed + metrics.not_generated
+            + metrics.dependency_failures) == metrics.generated_tasks

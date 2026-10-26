@@ -1,6 +1,6 @@
 """Probability distributions and mobility models, configured from Python.
 
-    python examples/distributions_and_mobility.py
+    python examples/distributions_and_mobility/distributions_and_mobility.py
 
 The first run keeps the plain numbers of the settings folder: every task of an
 application has the same length, the same sizes and the same arrival pattern, and
@@ -16,7 +16,7 @@ from pureedgesim import (COLUMNS, ExponentialDistribution, LogNormalDistribution
                        NormalDistribution, Randomness, Simulation, SimulationParameters,
                        WeibullDistribution, load_parameters, load_settings)
 
-SETTINGS = Path(__file__).resolve().parent / "default_settings"
+SETTINGS = Path(__file__).resolve().parents[1] / "default_settings"
 
 
 def base_parameters() -> SimulationParameters:
@@ -36,7 +36,7 @@ def run(label: str, files) -> dict:
     row = simulation.launch()[0]
     print(f"{label:<22} tasks={row[COLUMNS[7]]:>5} ok={row[COLUMNS[8]]:>5} "
           f"delay={row[COLUMNS[4]]:<8} failed(delay)={row[COLUMNS[10]]:>4} "
-          f"failed(mobility)={row[COLUMNS[12]]:>4} energy={row[COLUMNS[31]]}")
+          f"failed(mobility)={row[COLUMNS[12]]:>4} energy={row[COLUMNS[32]]}")
     return row
 
 

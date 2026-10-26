@@ -66,6 +66,9 @@ class SimulationManager(SimEntity):
         self.orchestrator = (self.custom_orchestrator or DefaultOrchestrator)(self)
         self.orchestrator.initialize(self.scenario.orchestration_architecture)
         self.tasks = DefaultTaskGenerator(self).generate()
+        # The tasks that enter the simulation immediately: a graph submits its roots,
+        # the other subtasks wait until their dependencies return their results.
+        self.root_tasks = [task for task in self.tasks if not task.dependencies]
         self.metrics.generated_tasks = len(self.tasks)
         for node in self.computing_nodes:
             if node.mobility_model is not None:
@@ -83,12 +86,12 @@ class SimulationManager(SimEntity):
         return self.parameters.wifi_bandwidth, self.parameters.wifi_delay
 
     def _schedule_batch(self, start: int) -> None:
-        end = min(start + self.parameters.batch_size, len(self.tasks))
+        end = min(start + self.parameters.batch_size, len(self.root_tasks))
         for index in range(start, end):
-            task = self.tasks[index]
+            task = self.root_tasks[index]
             delay = max(0.0, task.time - self.engine.clock)
             self.schedule(self, delay, EventType.SEND_TO_ORCH, task)
-        if end < len(self.tasks):
+        if end < len(self.root_tasks):
             self.schedule(self, 0.0, EventType.NEXT_BATCH, end)
 
     def process_event(self, event: Event) -> None:
@@ -197,7 +200,27 @@ class SimulationManager(SimEntity):
             task.status = TaskStatus.SUCCESS
             self.metrics.succeeded_tasks += 1
             self._count_success(task)
+            self._release_dependents(task)
         self.orchestrator.results_returned(task)
+
+    def _release_dependents(self, task: Task) -> None:
+        """Submits the subtasks whose last dependency has just returned its results."""
+        for dependent in task.dependents:
+            if dependent.failed:
+                continue
+            if dependent.dependency_finished():
+                dependent.time = self.engine.clock
+                self.schedule(self, 0.0, EventType.SEND_TO_ORCH, dependent)
+
+    def _fail_dependents(self, task: Task) -> None:
+        """Fails the whole subtree of a task that could never complete."""
+        for dependent in task.dependents:
+            if dependent.failed:
+                continue
+            dependent.failed = True
+            dependent.status = TaskStatus.FAILED_BECAUSE_DEPENDENCY_FAILED
+            self.metrics.dependency_failures += 1
+            self._fail_dependents(dependent)
 
     def _count_level(self, task: Task) -> None:
         if task.level_counted or task.destination is None:
@@ -230,6 +253,7 @@ class SimulationManager(SimEntity):
                 task.status = TaskStatus.FAILED_DUE_TO_DEVICE_DEATH
                 task.source_device.application_placed = False
                 self.metrics.not_generated += 1
+                self._fail_dependents(task)
             return True
         if phase == 1:
             if not orchestrator.is_alive():
@@ -266,6 +290,7 @@ class SimulationManager(SimEntity):
             self.metrics.mobility_failures += 1
         else:
             self.metrics.not_executed += 1
+        self._fail_dependents(task)
         return True
 
     def connect_with(self, device: ComputingNode, data_center) -> None:
@@ -335,6 +360,7 @@ class _Metrics:
         self.death_failures = 0
         self.mobility_failures = 0
         self.not_executed = 0
+        self.dependency_failures = 0
         self.dead_devices = 0
         self.cloud_tasks = 0
         self.edge_tasks = 0

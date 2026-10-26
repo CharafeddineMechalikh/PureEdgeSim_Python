@@ -16,6 +16,7 @@ class TaskStatus(Enum):
     INSUFFICIENT_RESOURCES = 5
     NO_OFFLOADING_DESTINATIONS = 6
     NULL = 7
+    FAILED_BECAUSE_DEPENDENCY_FAILED = 8
 
 
 @dataclass
@@ -42,6 +43,24 @@ class Task:
     network_hops: list = field(default_factory=list)
     level_counted: bool = False
     failed: bool = False
+    subtask_name: str | None = None
+    dependencies: list = field(default_factory=list)
+    dependents: list = field(default_factory=list)
+    remaining_dependencies: int = 0
+
+    def add_dependency(self, parent: "Task") -> None:
+        """Registers a parent whose results must return before this task may run."""
+        self.dependencies.append(parent)
+        self.remaining_dependencies += 1
+
+    def add_dependent(self, child: "Task") -> None:
+        self.dependents.append(child)
+
+    def dependency_finished(self) -> bool:
+        """Records that one parent returned its results; true once the last one has."""
+        if self.remaining_dependencies > 0:
+            self.remaining_dependencies -= 1
+        return self.remaining_dependencies == 0
 
     @property
     def waiting_time(self) -> float:
@@ -104,8 +123,8 @@ class DefaultTaskGenerator:
             spacing = 60 // rate
             for _ in range(rate):
                 time += spacing
-                tasks.append(self._create_task(device, application, time, identifier))
-                identifier += 1
+                generated, identifier = self._create_tasks(device, application, time, identifier)
+                tasks.extend(generated)
         return identifier
 
     def _generate_arriving(self, device, application, tasks: list[Task], identifier: int) -> int:
@@ -115,11 +134,44 @@ class DefaultTaskGenerator:
         time = self.random.random() * max(1.0, arrival.sample())
         time = max(1.0, float(int(time)))
         while time < duration:
-            tasks.append(self._create_task(device, application, int(time), identifier))
-            identifier += 1
+            generated, identifier = self._create_tasks(device, application, int(time), identifier)
+            tasks.extend(generated)
             # A gap of less than one second would keep the loop busy without moving.
             time += max(1.0, arrival.sample())
         return identifier
+
+    def _create_tasks(self, device, application, time: float, identifier: int) -> tuple[list[Task], int]:
+        """Every task of one request: a single task, or one task per subtask of a graph."""
+        if not application.has_subtasks:
+            return [self._create_task(device, application, time, identifier)], identifier + 1
+        tasks: list[Task] = []
+        by_name: dict[str, Task] = {}
+        request_id = self.manager.applications.index(application)
+        for subtask in application.subtasks:
+            task = Task(
+                id=identifier,
+                type=application.type,
+                application_id=request_id,
+                length=subtask.task_length.sample(),
+                container_size=subtask.container_size.sample(),
+                request_size=subtask.request_size.sample(),
+                result_size=subtask.results_size.sample(),
+                max_latency=subtask.latency.sample(),
+                time=time,
+                source_device=device,
+                registry=self.manager.registry,
+                subtask_name=subtask.name,
+            )
+            identifier += 1
+            by_name[subtask.name] = task
+            tasks.append(task)
+        for subtask in application.subtasks:
+            child = by_name[subtask.name]
+            for parent_name in subtask.dependencies:
+                parent = by_name[parent_name]
+                parent.add_dependent(child)
+                child.add_dependency(parent)
+        return tasks, identifier
 
     def _create_task(self, device, application, time: float, identifier: int) -> Task:
         return Task(

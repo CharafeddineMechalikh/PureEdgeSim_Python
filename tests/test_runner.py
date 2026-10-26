@@ -45,7 +45,7 @@ def test_the_output_folder_is_named_after_the_launch_time():
 def test_a_row_holds_one_value_per_csv_column(parameters, files):
     sweep(parameters)
     row = run_scenario(parameters, files, build_scenarios(parameters)[0], 0)
-    assert len(COLUMNS) == 51
+    assert len(COLUMNS) == 52
     assert list(row) == COLUMNS
 
 
@@ -63,8 +63,9 @@ def test_the_counters_in_the_row_are_the_manager_metrics(parameters, files):
     assert row[COLUMNS[8]] == metrics.succeeded_tasks
     assert row[COLUMNS[9]] == metrics.not_executed
     assert row[COLUMNS[10]] == metrics.delay_failures
-    assert (row[COLUMNS[14]], row[COLUMNS[16]], row[COLUMNS[18]]) == (metrics.cloud_tasks,
-                                                                      metrics.edge_tasks, metrics.mist_tasks)
+    assert (row[COLUMNS[15]], row[COLUMNS[17]], row[COLUMNS[19]]) == (metrics.cloud_tasks,
+                                                                     metrics.edge_tasks, metrics.mist_tasks)
+    assert row[COLUMNS[14]] == metrics.dependency_failures
     assert row[COLUMNS[3]] == round(metrics.total_execution_time, 4)
     assert row[COLUMNS[4]] == round(metrics.total_execution_time / metrics.executed_tasks, 4)
 
@@ -83,21 +84,21 @@ def test_the_network_usage_column_sums_the_three_networks(parameters, files):
     engine, manager = run_manager(parameters, files, "ALL", "TRADE_OFF", devices=10)
     network = manager.network
     row = summarize(manager)
-    assert row[COLUMNS[20]] == round(sum(network.network_usage.values()), 4)
-    assert row[COLUMNS[20]] == round(network.network_usage[LinkType.LAN]
+    assert row[COLUMNS[21]] == round(sum(network.network_usage.values()), 4)
+    assert row[COLUMNS[21]] == round(network.network_usage[LinkType.LAN]
                                      + network.network_usage[LinkType.MAN]
                                      + network.network_usage[LinkType.WAN], 4)
-    assert row[COLUMNS[22]] == round(network.network_usage[LinkType.LAN], 4)
-    assert row[COLUMNS[21]] == round(network.network_usage[LinkType.WAN], 4) > 0
-    assert row[COLUMNS[23]] == round(network.total_traffic_bits / 8 / 1e6, 4) > 0
+    assert row[COLUMNS[23]] == round(network.network_usage[LinkType.LAN], 4)
+    assert row[COLUMNS[22]] == round(network.network_usage[LinkType.WAN], 4) > 0
+    assert row[COLUMNS[24]] == round(network.total_traffic_bits / 8 / 1e6, 4) > 0
 
 
 def test_the_layer_energies_add_up_to_the_total(parameters, files):
     engine, manager = run_manager(parameters, files, "ALL", "TRADE_OFF", devices=10)
     row = summarize(manager)
-    assert row[COLUMNS[31]] == pytest.approx(row[COLUMNS[33]] + row[COLUMNS[35]] + row[COLUMNS[37]], abs=1e-3)
-    assert row[COLUMNS[33]] > 0 and row[COLUMNS[35]] > 0 and row[COLUMNS[37]] > 0
-    assert row[COLUMNS[38]] == pytest.approx(row[COLUMNS[37]] / len(manager.edge_devices), rel=1e-3)
+    assert row[COLUMNS[32]] == pytest.approx(row[COLUMNS[34]] + row[COLUMNS[36]] + row[COLUMNS[38]], abs=1e-3)
+    assert row[COLUMNS[34]] > 0 and row[COLUMNS[36]] > 0 and row[COLUMNS[38]] > 0
+    assert row[COLUMNS[39]] == pytest.approx(row[COLUMNS[38]] / len(manager.edge_devices), rel=1e-3)
 
 
 def test_the_battery_columns_list_one_entry_per_battery_device(parameters, files):
@@ -105,11 +106,11 @@ def test_the_battery_columns_list_one_entry_per_battery_device(parameters, files
     row = summarize(manager)
     battery = [node for node in manager.edge_devices if node.is_battery_powered()]
     assert len(battery) > 0
-    percentages = row[COLUMNS[49]].split("-")
+    percentages = row[COLUMNS[50]].split("-")
     assert len(percentages) == len(battery)
     assert all(0.0 < float(value) <= 100.0 for value in percentages)
-    assert row[COLUMNS[45]] == 0
-    assert row[COLUMNS[50]] == ""
+    assert row[COLUMNS[46]] == 0
+    assert row[COLUMNS[51]] == ""
 
 
 def test_a_device_that_dies_is_reported_once_with_its_death_time(parameters, files):
@@ -121,13 +122,13 @@ def test_a_device_that_dies_is_reported_once_with_its_death_time(parameters, fil
     engine.start()
     assert victim.is_dead()
     row = summarize(manager)
-    assert row[COLUMNS[45]] == 1
-    assert row[COLUMNS[48]] == round(victim.death_time, 4)
-    assert row[COLUMNS[50]] == str(round(victim.death_time, 2))
-    percentages = row[COLUMNS[49]].split("-")
+    assert row[COLUMNS[46]] == 1
+    assert row[COLUMNS[49]] == round(victim.death_time, 4)
+    assert row[COLUMNS[51]] == str(round(victim.death_time, 2))
+    percentages = row[COLUMNS[50]].split("-")
     assert percentages.count("0") == 1
     assert all(0.0 < float(value) <= 100.0 for value in percentages if value != "0")
-    assert float(row[COLUMNS[47]]) <= 100.0
+    assert float(row[COLUMNS[48]]) <= 100.0
 
 
 def test_the_same_seed_and_iteration_replay_the_same_row(parameters, files):

@@ -6,7 +6,7 @@ import pytest
 from conftest import build_manager
 from pureedgesim import Task
 from pureedgesim.distribution import ConstantDistribution, UniformDistribution
-from pureedgesim.config import Application
+from pureedgesim.config import Application, Subtask
 from pureedgesim.nodes import NodeType
 from pureedgesim.tasks import DefaultTaskGenerator, TaskStatus
 
@@ -157,3 +157,67 @@ def test_tasks_carry_the_application_type_and_the_cloud_registry(gen):
     assert {task.registry for task in tasks} == {manager.registry}
     assert manager.registry.type == NodeType.CLOUD
     assert {task.source_device.type for task in tasks} == {NodeType.EDGE_DEVICE}
+
+
+# ---------------------------------------------------------------------------
+# Service graphs
+# ---------------------------------------------------------------------------
+
+def subtask(name, dependencies=(), length=100.0):
+    return Subtask(name=name, dependencies=dependencies, latency=ConstantDistribution(10),
+                   container_size=ConstantDistribution(8e6), request_size=ConstantDistribution(8e3),
+                   results_size=ConstantDistribution(8e3), task_length=ConstantDistribution(length))
+
+
+def graph_application(rate=2, usage=100, failure_latency=10):
+    return Application(name="pipeline", type="pipeline", rate=ConstantDistribution(rate),
+                       usage_percentage=usage, latency=ConstantDistribution(failure_latency),
+                       container_size=ConstantDistribution(8e6), request_size=ConstantDistribution(8e3),
+                       results_size=ConstantDistribution(8e3), task_length=ConstantDistribution(100),
+                       subtasks=(subtask("capture"),
+                                 subtask("detect", ("capture",), length=500.0),
+                                 subtask("alert", ("detect",), length=50.0)))
+
+
+def test_a_service_graph_instantiates_one_task_per_subtask(gen):
+    engine, manager = gen
+    tasks = generate(manager, graph_application(), duration=120.0)
+    requests = len(tasks) // 3
+    assert requests > 0 and len(tasks) == requests * 3
+    assert len({task.id for task in tasks}) == len(tasks)
+    assert {task.subtask_name for task in tasks} == {"capture", "detect", "alert"}
+    assert {task.length for task in tasks if task.subtask_name == "detect"} == {500.0}
+
+
+def test_only_the_roots_of_a_graph_are_ready_to_run(gen):
+    engine, manager = gen
+    tasks = generate(manager, graph_application(), duration=120.0)
+    roots = [task for task in tasks if not task.dependencies]
+    captures = [task for task in tasks if task.subtask_name == "capture"]
+    detects = [task for task in tasks if task.subtask_name == "detect"]
+    alerts = [task for task in tasks if task.subtask_name == "alert"]
+    assert len(roots) == len(captures) == len(tasks) // 3
+    assert all(task.remaining_dependencies == 0 for task in roots)
+    assert all(task.remaining_dependencies == 1 for task in detects + alerts)
+    for capture, detect, alert in zip(captures, detects, alerts):
+        assert detect.dependencies == [capture] and capture.dependents == [detect]
+        assert alert.dependencies == [detect]
+
+
+def test_a_join_waits_for_every_parent_before_it_can_run(gen):
+    engine, manager = gen
+    application_with_join = graph_application()
+    application_with_join.subtasks = (subtask("left"), subtask("right"),
+                                      subtask("join", ("left", "right")))
+    tasks = generate(manager, application_with_join, duration=60.0)
+    joins = [task for task in tasks if task.subtask_name == "join"]
+    lefts = [task for task in tasks if task.subtask_name == "left"]
+    assert joins and all(task.remaining_dependencies == 2 for task in joins)
+    first, second = joins[0], right_parent(joins[0])
+    assert first.dependency_finished() is False
+    assert second.dependency_finished() is True
+    assert lefts[0].dependents[0] is first
+
+
+def right_parent(join):
+    return next(parent for parent in join.dependencies if parent.subtask_name == "right")
