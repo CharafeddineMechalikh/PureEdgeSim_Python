@@ -24,8 +24,8 @@ from pureedgesim import COLUMNS, NodeType, Orchestrator, Simulation, load_parame
 
 from pureedgesim.partitioning import Candidate, GeneticPartitioner, ServiceGraph
 
-SETTINGS = Path(__file__).resolve().parents[1] / "partitioning_settings"
-OUTPUT = "output/partitioning"
+SETTINGS = Path(__file__).resolve().parent / "settings"
+OUTPUT = "examples/genetic_partitioning/output"
 DEFAULT_SEED = 20261026
 
 

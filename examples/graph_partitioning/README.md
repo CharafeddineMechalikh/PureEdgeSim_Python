@@ -1,5 +1,17 @@
 # Graph partitioning: cutting a service graph with graph theory
 
+## Why this scenario exists
+
+A service graph is usually placed as one unit: the whole pipeline runs on one
+node, so the slowest stage sets the makespan and that node carries all of the
+work. Splitting the pipeline across tiers is the standard lever, and it is a
+combinatorial problem, not a scheduling one: where to cut decides both the
+pipelined execution time and how many intermediate results cross the network.
+
+This scenario fixes the workload and the topology, and shows that the cut alone
+moves a request between tiers. It is the reference point for comparing any other
+placement strategy on the same graph, including the genetic one.
+
 ## What it shows
 
 How to route the subtasks of one request to different nodes. The applications
@@ -21,6 +33,28 @@ tiers in the order mist, edge, cloud. The subtask name and the application
 identifier select the partition at runtime, and the orchestrator picks the next
 eligible node of that tier in round robin.
 
+The plan printed below is the same graph, so the figure and the console agree:
+`detect` and `classify` are pulled out of the big partition because they are the
+two heaviest stages, and the four dashed edges are what has to cross the network
+at runtime.
+
+```mermaid
+flowchart LR
+    subgraph P2["P0.2 mist - 1950 MI"]
+        capture["capture<br/>200 MI"] --> preprocess["preprocess<br/>600 MI"]
+        track["track<br/>800 MI"] --> aggregate["aggregate<br/>300 MI"]
+        aggregate --> notify["notify<br/>50 MI"]
+    end
+    detect["detect<br/>4000 MI"]
+    classify["classify<br/>2500 MI"]
+    preprocess -.->|20 kB| detect
+    detect -.->|10 kB| classify
+    detect -.->|10 kB| track
+    classify -.->|50 kB| aggregate
+    classDef pulled fill:#cfe8ff,stroke:#333;
+    class detect,classify pulled;
+```
+
 ## The API detail this example exists to show
 
 PureEdgeSim caches an application placement: after the first decision, later
@@ -41,7 +75,7 @@ plan and the others would go to the same node.
 
 ## The scenario
 
-`examples/partitioning_settings` describes:
+`examples/graph_partitioning/settings` describes:
 
 - 150 devices on a 2000 by 2000 meters map, with a 50 meters device-to-device
   range so a requesting device can reach a few neighbours;
@@ -90,7 +124,8 @@ the load further but cut more edges.
 - `graph_partitioning.py` with the orchestrator and the run
 - `../../src/pureedgesim/partitioning.py` with `ServiceGraph` and
   `GraphPartitioner`, shared with the genetic example
-- `../partitioning_settings/applications.xml` with the service graph
+- `settings/` with the five PureEdgeSim files, `applications.xml` holding the
+  service graph
 
 ## Where to go next
 

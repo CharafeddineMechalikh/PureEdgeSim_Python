@@ -1,5 +1,18 @@
 # Genetic partitioning: searching a subtask placement
 
+## Why this scenario exists
+
+The graph cut of the [other partitioning example](../graph_partitioning/README.md)
+optimises the structure of the dependency graph, which is blind to two things that
+matter on a real deployment: how long a stage actually takes on a machine of a
+given speed, and what the intermediate result costs to move between tiers.
+
+This example poses the same question as a search over placements instead, with an
+objective built from the estimates the simulator itself uses. Running both on the
+identical workload is what makes the comparison honest: if a learned or searched
+placement does not beat the structural cut on the same graph, the structure was
+not the binding constraint.
+
 ## What it shows
 
 The same service graph as the [graph partitioning example](../graph_partitioning/README.md),
@@ -14,6 +27,24 @@ solved differently. Instead of deriving a cut from the structure of the graph,
 - selection is by tournament, crossover is uniform, mutation flips one gene, and
   the best chromosome of each generation is kept.
 
+```mermaid
+flowchart LR
+    population["Population<br/>one gene per subtask"] --> evaluate["Estimate the placement<br/>makespan, transfers, imbalance"]
+    evaluate --> tournament["Tournament selection"]
+    tournament --> crossover["Uniform crossover"]
+    crossover --> mutation["Flip one gene"]
+    mutation --> elite["Keep the best<br/>of the generation"]
+    elite -->|next generation| population
+```
+
+The plan the search converges to prints as one node per stage, which is the
+whole placement:
+
+```text
+capture  preprocess  detect  classify  track   aggregate  notify
+Mist#65  Mist#65     Mist#64 Mist#54   Edge#2  Mist#54    Mist#54
+```
+
 Subtasks that receive the same node form the same partition, so the search
 implicitly decides where to cut the graph.
 
@@ -27,7 +58,7 @@ the graph example does, so every subtask is routed on its own.
 
 ## The scenario
 
-`examples/partitioning_settings` is the scenario of the graph example: 150
+`examples/genetic_partitioning/settings` is the scenario of the graph example: 150
 devices on a 2000 by 2000 meters map, four linked edge data centers, the `ALL`
 architecture, five simulated minutes, and the same 60/40 split between the graph
 application and a monolithic one.
@@ -68,7 +99,8 @@ change for the same scenario.
 - `genetic_partitioning.py` with the orchestrator and the run
 - `../../src/pureedgesim/partitioning.py` with `Candidate` and
   `GeneticPartitioner`, shared with the graph example
-- `../partitioning_settings/applications.xml` with the service graph
+- `settings/` with the five PureEdgeSim files, `applications.xml` holding the
+  service graph
 
 ## Where to go next
 

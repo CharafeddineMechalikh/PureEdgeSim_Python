@@ -3,7 +3,7 @@
 	<datacenter name="dc1">
 		<periphery>true</periphery>
 		<idleConsumption>100</idleConsumption>
-		<maxConsumption>150</maxConsumption>
+		<maxConsumption>250</maxConsumption>
 		<isOrchestrator>false</isOrchestrator>
 		<location>
 			<x_pos>100</x_pos>

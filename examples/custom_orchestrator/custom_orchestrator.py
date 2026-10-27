@@ -13,7 +13,7 @@ from pathlib import Path
 from pureedgesim import (COLUMNS, DefaultOrchestrator, NodeType, Orchestrator, Simulation,
                        load_parameters, load_settings)
 
-SETTINGS = Path(__file__).resolve().parents[1] / "default_settings"
+SETTINGS = Path(__file__).resolve().parent / "settings"
 CLOUD_IS_FAR = 1e9
 
 
@@ -43,7 +43,7 @@ def run(label: str, orchestrator: type[Orchestrator] = DefaultOrchestrator) -> d
     parameters.orchestration_algorithms = ["TRADE_OFF"]
     parameters.random_seed = 7
     parameters.save_log_file = False
-    simulation = Simulation(SETTINGS, "output/examples", parameters, load_settings(SETTINGS))
+    simulation = Simulation(SETTINGS, "examples/custom_orchestrator/output", parameters, load_settings(SETTINGS))
     simulation.set_custom_orchestrator(orchestrator)
     row = simulation.launch()[0]
     print(f"{label:<24} tasks={row[COLUMNS[7]]:>5} ok={row[COLUMNS[8]]:>5} "

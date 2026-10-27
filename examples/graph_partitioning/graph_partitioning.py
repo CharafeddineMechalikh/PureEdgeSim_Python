@@ -22,8 +22,8 @@ from pureedgesim import COLUMNS, NodeType, Orchestrator, Simulation, load_parame
 
 from pureedgesim.partitioning import GraphPartitioner, ServiceGraph
 
-SETTINGS = Path(__file__).resolve().parents[1] / "partitioning_settings"
-OUTPUT = "output/partitioning"
+SETTINGS = Path(__file__).resolve().parent / "settings"
+OUTPUT = "examples/graph_partitioning/output"
 PARTITIONS_PER_COMPONENT = 3
 TIERS = (("Mist", NodeType.EDGE_DEVICE), ("Edge", NodeType.EDGE_DATACENTER), ("Cloud", NodeType.CLOUD))
 

@@ -16,7 +16,7 @@ from pureedgesim import (COLUMNS, ExponentialDistribution, LogNormalDistribution
                        NormalDistribution, Randomness, Simulation, SimulationParameters,
                        WeibullDistribution, load_parameters, load_settings)
 
-SETTINGS = Path(__file__).resolve().parents[1] / "default_settings"
+SETTINGS = Path(__file__).resolve().parent / "settings"
 
 
 def base_parameters() -> SimulationParameters:
@@ -32,7 +32,7 @@ def base_parameters() -> SimulationParameters:
 
 
 def run(label: str, files) -> dict:
-    simulation = Simulation(SETTINGS, "output/examples", base_parameters(), files)
+    simulation = Simulation(SETTINGS, "examples/distributions_and_mobility/output", base_parameters(), files)
     row = simulation.launch()[0]
     print(f"{label:<22} tasks={row[COLUMNS[7]]:>5} ok={row[COLUMNS[8]]:>5} "
           f"delay={row[COLUMNS[4]]:<8} failed(delay)={row[COLUMNS[10]]:>4} "
