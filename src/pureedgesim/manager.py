@@ -27,7 +27,9 @@ class SimulationManager(SimEntity):
     """The hub: it owns the models, drives the task lifecycle and counts the results."""
 
     def __init__(self, engine: Engine, parameters: SimulationParameters, files: ScenarioFiles,
-                 scenario: Scenario, custom_mobility_model=None, custom_orchestrator=None) -> None:
+                 scenario: Scenario, custom_mobility_model=None, custom_orchestrator=None,
+                 custom_network_model=None, custom_nodes_generator=None, custom_topology_creator=None,
+                 custom_task_generator=None, custom_computing_node=None) -> None:
         super().__init__(engine)
         self.engine = engine
         self.parameters = parameters
@@ -36,12 +38,20 @@ class SimulationManager(SimEntity):
         self.random = Randomness.get_random()
         self.default_mobility_model = custom_mobility_model or DefaultMobilityModel
         self.custom_orchestrator = custom_orchestrator
+        self.custom_network_model = custom_network_model or DefaultNetworkModel
+        self.custom_nodes_generator = custom_nodes_generator or ComputingNodesGenerator
+        self.custom_topology_creator = custom_topology_creator or DefaultTopologyCreator
+        self.custom_task_generator = custom_task_generator or DefaultTaskGenerator
+        # The class every created node is built from, the counterpart of
+        # setCustomComputingNode; None keeps the built-in classes.
+        self.custom_computing_node = custom_computing_node
         self.node_id_counter = 0
         self.network: DefaultNetworkModel | None = None
         self.nodes_generator: ComputingNodesGenerator | None = None
         self.orchestrator = None
         self.tasks: list[Task] = []
         self.finished_tasks: set[int] = set()
+        self.requests: dict[int, _RequestRecord] = {}
         self.metrics = _Metrics()
         self.registry: ComputingNode = ComputingNode.NULL
         self.applications = files.applications
@@ -55,17 +65,17 @@ class SimulationManager(SimEntity):
         return self.node_id_counter
 
     def start_simulation(self) -> None:
-        self.network = DefaultNetworkModel(self)
-        self.nodes_generator = ComputingNodesGenerator(self)
+        self.network = self.custom_network_model(self)
+        self.nodes_generator = self.custom_nodes_generator(self)
         self.nodes_generator.generate(self.files, self.scenario.devices_count)
-        DefaultTopologyCreator(self, self.nodes_generator, self.files).create()
+        self.custom_topology_creator(self, self.nodes_generator, self.files).create()
         self.computing_nodes = self.nodes_generator.all_nodes
         self.edge_only_list = [node for node in self.nodes_generator.edge_data_centers if node.is_peripheral]
         self.edge_devices = self.nodes_generator.edge_devices
         self.registry = self.nodes_generator.cloud_nodes[0] if self.nodes_generator.cloud_nodes else ComputingNode.NULL
         self.orchestrator = (self.custom_orchestrator or DefaultOrchestrator)(self)
         self.orchestrator.initialize(self.scenario.orchestration_architecture)
-        self.tasks = DefaultTaskGenerator(self).generate()
+        self.tasks = self.custom_task_generator(self).generate()
         # The tasks that enter the simulation immediately: a graph submits its roots,
         # the other subtasks wait until their dependencies return their results.
         self.root_tasks = [task for task in self.tasks if not task.dependencies]
@@ -107,6 +117,7 @@ class SimulationManager(SimEntity):
             self._check_termination()
 
     def _send_to_orchestrator(self, task: Task) -> None:
+        self._register_request(task)
         if self.task_failed(task, 0):
             return
         orchestrator = self._select_orchestrator(task)
@@ -201,26 +212,74 @@ class SimulationManager(SimEntity):
             self.metrics.succeeded_tasks += 1
             self._count_success(task)
             self._release_dependents(task)
+            self._request_task_finished(task, False)
         self.orchestrator.results_returned(task)
 
-    def _release_dependents(self, task: Task) -> None:
-        """Submits the subtasks whose last dependency has just returned its results."""
+    def _release_dependents(self, task: Task, with_results: bool = True) -> None:
+        """Submits the subtasks whose last dependency has just returned its results.
+
+        The output of the parent is added to the request size of the child, so the
+        payload of a dependency travels over the network.
+        """
         for dependent in task.dependents:
-            if dependent.failed:
+            if self._is_terminal(dependent):
                 continue
+            if with_results:
+                dependent.request_size += task.result_size
             if dependent.dependency_finished():
                 dependent.time = self.engine.clock
                 self.schedule(self, 0.0, EventType.SEND_TO_ORCH, dependent)
 
     def _fail_dependents(self, task: Task) -> None:
-        """Fails the whole subtree of a task that could never complete."""
+        """Fails the subtasks that will never receive their input.
+
+        An optional subtask is skipped instead of failing the request, and the
+        request continues without its results.
+        """
         for dependent in task.dependents:
-            if dependent.failed:
+            if self._is_terminal(dependent):
+                continue
+            if dependent.optional:
+                self._skip_task(dependent)
                 continue
             dependent.failed = True
             dependent.status = TaskStatus.FAILED_BECAUSE_DEPENDENCY_FAILED
             self.metrics.dependency_failures += 1
+            self._request_task_finished(dependent, True)
             self._fail_dependents(dependent)
+
+    def _is_terminal(self, task: Task) -> bool:
+        return task.failed or task.status == TaskStatus.SKIPPED
+
+    def _skip_task(self, task: Task) -> None:
+        """Skips an optional subtask whose input can never be complete."""
+        task.status = TaskStatus.SKIPPED
+        self.metrics.tasks_skipped += 1
+        self._request_task_finished(task, False)
+        self._release_dependents(task, False)
+
+    def _register_request(self, task: Task) -> None:
+        if task.request_id < 0 or task.request_id in self.requests:
+            return
+        self.requests[task.request_id] = _RequestRecord(task.request_start_time, task.request_task_count)
+        self.metrics.generated_requests += 1
+
+    def _request_task_finished(self, task: Task, failed: bool) -> None:
+        """Records one terminal task of a request; completes the request on the last one."""
+        if task.request_id < 0:
+            return
+        self._register_request(task)
+        request = self.requests[task.request_id]
+        if failed:
+            request.failed = True
+        request.remaining -= 1
+        if request.remaining > 0:
+            return
+        if request.failed:
+            self.metrics.failed_requests += 1
+            return
+        self.metrics.successful_requests += 1
+        self.metrics.total_request_makespan += self.engine.clock - request.start_time
 
     def _count_level(self, task: Task) -> None:
         if task.level_counted or task.destination is None:
@@ -253,6 +312,7 @@ class SimulationManager(SimEntity):
                 task.status = TaskStatus.FAILED_DUE_TO_DEVICE_DEATH
                 task.source_device.application_placed = False
                 self.metrics.not_generated += 1
+                self._request_task_finished(task, True)
                 self._fail_dependents(task)
             return True
         if phase == 1:
@@ -274,6 +334,10 @@ class SimulationManager(SimEntity):
                 return self._fail(task, TaskStatus.FAILED_DUE_TO_DEVICE_DEATH, "destination died")
             if task.total_delay >= task.max_latency:
                 return self._fail(task, TaskStatus.FAILED_DUE_TO_DELAY, "latency exceeded")
+            # The request missed its end-to-end deadline even if this subtask met
+            # its own bound, measured from its release.
+            if task.request_deadline > 0 and self.engine.clock >= task.request_deadline:
+                return self._fail(task, TaskStatus.FAILED_DUE_TO_DELAY, "request deadline exceeded")
         return False
 
     def _fail(self, task: Task, status: TaskStatus, reason: str) -> bool:
@@ -291,6 +355,7 @@ class SimulationManager(SimEntity):
         else:
             self.metrics.not_executed += 1
         self._fail_dependents(task)
+        self._request_task_finished(task, True)
         return True
 
     def connect_with(self, device: ComputingNode, data_center) -> None:
@@ -368,3 +433,17 @@ class _Metrics:
         self.cloud_successes = 0
         self.edge_successes = 0
         self.mist_successes = 0
+        self.tasks_skipped = 0
+        self.generated_requests = 0
+        self.successful_requests = 0
+        self.failed_requests = 0
+        self.total_request_makespan = 0.0
+
+
+class _RequestRecord:
+    """One request of a service graph, completed when all its subtasks are terminal."""
+
+    def __init__(self, start_time: float, task_count: int) -> None:
+        self.start_time = start_time
+        self.remaining = task_count
+        self.failed = False

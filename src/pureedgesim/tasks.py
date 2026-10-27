@@ -17,6 +17,7 @@ class TaskStatus(Enum):
     NO_OFFLOADING_DESTINATIONS = 6
     NULL = 7
     FAILED_BECAUSE_DEPENDENCY_FAILED = 8
+    SKIPPED = 9
 
 
 @dataclass
@@ -47,6 +48,18 @@ class Task:
     dependencies: list = field(default_factory=list)
     dependents: list = field(default_factory=list)
     remaining_dependencies: int = 0
+    request_id: int = -1
+    request_task_count: int = 1
+    request_start_time: float = 0.0
+    request_deadline: float = 0.0
+    optional: bool = False
+
+    def set_request(self, request_id: int, task_count: int, start_time: float, deadline: float) -> None:
+        """Records the request this task belongs to and its end-to-end deadline."""
+        self.request_id = request_id
+        self.request_task_count = task_count
+        self.request_start_time = start_time
+        self.request_deadline = deadline
 
     def add_dependency(self, parent: "Task") -> None:
         """Registers a parent whose results must return before this task may run."""
@@ -91,6 +104,7 @@ class DefaultTaskGenerator:
         self.manager = manager
         self.parameters = manager.parameters
         self.random = manager.random
+        self.request_counter = 0
 
     def generate(self) -> list[Task]:
         applications = self.manager.applications
@@ -146,12 +160,15 @@ class DefaultTaskGenerator:
             return [self._create_task(device, application, time, identifier)], identifier + 1
         tasks: list[Task] = []
         by_name: dict[str, Task] = {}
-        request_id = self.manager.applications.index(application)
+        application_id = self.manager.applications.index(application)
+        self.request_counter += 1
+        request_id = self.request_counter
+        deadline = time + application.latency.sample()
         for subtask in application.subtasks:
             task = Task(
                 id=identifier,
                 type=application.type,
-                application_id=request_id,
+                application_id=application_id,
                 length=subtask.task_length.sample(),
                 container_size=subtask.container_size.sample(),
                 request_size=subtask.request_size.sample(),
@@ -161,7 +178,9 @@ class DefaultTaskGenerator:
                 source_device=device,
                 registry=self.manager.registry,
                 subtask_name=subtask.name,
+                optional=subtask.optional,
             )
+            task.set_request(request_id, len(application.subtasks), time, deadline)
             identifier += 1
             by_name[subtask.name] = task
             tasks.append(task)
@@ -174,7 +193,11 @@ class DefaultTaskGenerator:
         return tasks, identifier
 
     def _create_task(self, device, application, time: float, identifier: int) -> Task:
-        return Task(
+        # The latency is sampled once and used both as the task bound and as the
+        # end-to-end deadline of the request.
+        latency = application.latency.sample()
+        self.request_counter += 1
+        task = Task(
             id=identifier,
             type=application.type,
             application_id=self.manager.applications.index(application),
@@ -182,8 +205,10 @@ class DefaultTaskGenerator:
             container_size=application.container_size.sample(),
             request_size=application.request_size.sample(),
             result_size=application.results_size.sample(),
-            max_latency=application.latency.sample(),
+            max_latency=latency,
             time=time,
             source_device=device,
             registry=self.manager.registry,
         )
+        task.set_request(self.request_counter, 1, time, time + latency)
+        return task

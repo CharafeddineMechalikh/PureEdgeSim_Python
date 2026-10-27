@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pureedgesim"
-version = "0.3.0"
+version = "6.0.0"
 description = "PureEdgeSim: discrete-event simulation of cloud, edge, fog and mist computing, in Python"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "Charafeddine Mechalikh" }]
 keywords = ["edge computing", "simulation", "discrete event", "fog", "mist", "offloading"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
@@ -25,7 +25,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-test = ["pytest>=7"]
+test = ["pytest>=7", "pytest-cov>=4"]
 
 [project.scripts]
 pureedgesim = "pureedgesim.cli:main"
@@ -34,6 +34,7 @@ pureedgesim = "pureedgesim.cli:main"
 Homepage = "https://github.com/CharafeddineMechalikh/PureEdgeSim_Python"
 Repository = "https://github.com/CharafeddineMechalikh/PureEdgeSim_Python"
 Issues = "https://github.com/CharafeddineMechalikh/PureEdgeSim_Python/issues"
+Documentation = "https://charafeddinemechalikh.github.io/PureEdgeSim_Python/docs/"
 "Java version" = "https://github.com/CharafeddineMechalikh/PureEdgeSim"
 
 [tool.setuptools.packages.find]

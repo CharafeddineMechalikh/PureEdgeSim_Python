@@ -48,6 +48,7 @@ class Subtask:
     request_size: Distribution
     results_size: Distribution
     task_length: Distribution
+    optional: bool = False
 
     @property
     def is_root(self) -> bool:
@@ -181,7 +182,7 @@ def _root(path: Path) -> ElementTree.Element:
 
 
 SUBTASK_ATTRIBUTES = {"name", "depends_on", "task_length", "request_size", "results_size", "container_size",
-                      "latency"}
+                      "latency", "optional"}
 
 
 def _subtask_error(application: str, subtask: str, reason: str) -> str:
@@ -204,6 +205,19 @@ def _subtask_dependencies(element: ElementTree.Element, name: str, application: 
         if dependency not in dependencies:
             dependencies.append(dependency)
     return tuple(dependencies)
+
+
+def _subtask_optional(element: ElementTree.Element, application: str, name: str, path: Path) -> bool:
+    """The optional attribute: a subtask that is skipped when a dependency fails."""
+    raw = (element.attrib.get("optional") or "").strip()
+    if not raw:
+        return False
+    if raw.lower() == "true":
+        return True
+    if raw.lower() == "false":
+        return False
+    raise ValueError(f"{path}: " + _subtask_error(
+        application, name, f'has an "optional" attribute of "{raw}", expected "true" or "false"'))
 
 
 def _subtask_distribution(element: ElementTree.Element, attribute: str, inherited: Distribution, scale: float,
@@ -246,9 +260,16 @@ def _subtasks(element: ElementTree.Element, application: "Application", path: Pa
         if name in names:
             raise ValueError(f"{path}: " + _subtask_error(application.name, name, "is declared more than once"))
         names.add(name)
+        dependencies = _subtask_dependencies(subtask, name, application.name, path)
+        optional = _subtask_optional(subtask, application.name, name, path)
+        if optional and not dependencies:
+            raise ValueError(f"{path}: " + _subtask_error(
+                application.name, name,
+                'is optional but has no dependency; an optional subtask is skipped only when one '
+                'of its dependencies fails, so it needs at least one'))
         subtasks.append(Subtask(
             name=name,
-            dependencies=_subtask_dependencies(subtask, name, application.name, path),
+            dependencies=dependencies,
             latency=_subtask_distribution(subtask, "latency", application.latency, 1, application.name, name, path),
             container_size=_subtask_distribution(subtask, "container_size", application.container_size,
                                                  KILOBYTES_TO_BITS, application.name, name, path),

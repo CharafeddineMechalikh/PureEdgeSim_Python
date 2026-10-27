@@ -1,4 +1,4 @@
-"""The scenario sweep: the 51-column result row, reproducibility and the output files."""
+"""The scenario sweep: the 56-column result row, reproducibility and the output files."""
 from __future__ import annotations
 
 import csv
@@ -6,7 +6,7 @@ import re
 
 import pytest
 from conftest import SETTINGS, build_manager, run_manager
-from pureedgesim import NodeStatus, Randomness, Scenario
+from pureedgesim import MobilityModelFactory, NodeStatus, Randomness, Scenario
 from pureedgesim.cli import main
 from pureedgesim.network import LinkType
 from pureedgesim.runner import (COLUMNS, Simulation, build_scenarios, output_folder, run_scenario, summarize)
@@ -45,7 +45,7 @@ def test_the_output_folder_is_named_after_the_launch_time():
 def test_a_row_holds_one_value_per_csv_column(parameters, files):
     sweep(parameters)
     row = run_scenario(parameters, files, build_scenarios(parameters)[0], 0)
-    assert len(COLUMNS) == 52
+    assert len(COLUMNS) == 56
     assert list(row) == COLUMNS
 
 
@@ -250,6 +250,14 @@ def test_the_cli_models_command_lists_the_mobility_models(capsys):
     assert main(["models"]) == 0
     printed = capsys.readouterr().out
     assert "random-waypoint" in printed and "gauss-markov" in printed
+
+
+def test_the_cli_models_command_shows_the_class_behind_each_name(capsys):
+    assert main(["models", "--verbose"]) == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len(lines) == len(MobilityModelFactory.known_names())
+    assert all(re.fullmatch(r"\S+\s+\w+", line) for line in lines)
+    assert "gauss-markov   GaussMarkovMobilityModel" in lines
 
 
 def test_the_cli_reports_broken_settings_without_a_traceback(tmp_path, capsys):

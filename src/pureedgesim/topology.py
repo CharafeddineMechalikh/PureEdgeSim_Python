@@ -20,9 +20,9 @@ class ComputingNodesGenerator:
 
     def generate(self, files: ScenarioFiles, device_count: int) -> None:
         for spec in files.cloud:
-            self.cloud_nodes.append(self._create_datacenter(spec, CloudDataCenter(self.manager, 1, 1, 1, 1)))
+            self.cloud_nodes.append(self._create_datacenter(spec, NodeType.CLOUD))
         for spec in files.edge_datacenters:
-            self.edge_data_centers.append(self._create_datacenter(spec, EdgeDataCenter(self.manager, 1, 1, 1, 1)))
+            self.edge_data_centers.append(self._create_datacenter(spec, NodeType.EDGE_DATACENTER))
         self._generate_devices(files.devices, device_count)
         for node in self.all_data_centers + self.edge_devices:
             if node.is_orchestrator:
@@ -36,7 +36,19 @@ class ComputingNodesGenerator:
     def all_nodes(self) -> list[ComputingNode]:
         return self.all_data_centers + self.routers + self.edge_devices
 
-    def _create_datacenter(self, spec: DatacenterSpec, node: ComputingNode) -> ComputingNode:
+    def _node(self, default: type, node_type: NodeType) -> ComputingNode:
+        """The custom computing node class when the example registers one, else the default.
+
+        Java builds every node from the single class passed to setCustomComputingNode,
+        so the type is re-assigned afterwards to keep the layer classification.
+        """
+        custom = self.manager.custom_computing_node
+        node = (custom or default)(self.manager, 1, 1, 1, 1)
+        node.type = node_type
+        return node
+
+    def _create_datacenter(self, spec: DatacenterSpec, node_type: NodeType) -> ComputingNode:
+        node = self._node(CloudDataCenter if node_type == NodeType.CLOUD else EdgeDataCenter, node_type)
         node.mips_per_core = spec.mips.sample()
         node.cores = int(spec.cores.sample_int())
         node.total_mips = node.mips_per_core * node.cores
@@ -78,7 +90,7 @@ class ComputingNodesGenerator:
         return allocation
 
     def _create_device(self, spec: DeviceSpec) -> ComputingNode:
-        node = EdgeDevice(self.manager, 1, 1, 1, 1)
+        node = self._node(EdgeDevice, NodeType.EDGE_DEVICE)
         node.mips_per_core = spec.mips.sample()
         node.cores = int(spec.cores.sample_int())
         node.total_mips = node.mips_per_core * node.cores

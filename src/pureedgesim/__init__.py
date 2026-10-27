@@ -20,22 +20,22 @@ from .mobility import (Location, MobilityModel, MobilityModelFactory, BrownianMo
                        LevyWalkMobilityModel, ManhattanMobilityModel, RandomWalkMobilityModel,
                        ReferencePointGroupMobilityModel, WaypointMobilityModel)
 from .network import DefaultNetworkModel, InfrastructureGraph, LinkTechnology, LinkType, NetworkLink
-from .nodes import CloudDataCenter, EdgeDataCenter, EdgeDevice, EventType, NodeStatus, NodeType, Router
+from .nodes import CloudDataCenter, ComputingNode, EdgeDataCenter, EdgeDevice, EventType, NodeStatus, NodeType, Router
 from .orchestrator import DefaultOrchestrator, Orchestrator
 from .parameters import SimulationParameters, load_parameters, validate
 from .randomness import Randomness
 from .runner import COLUMNS, Simulation, run_scenario, summarize
-from .tasks import Task, TaskStatus
+from .tasks import DefaultTaskGenerator, Task, TaskStatus
 from .topology import ComputingNodesGenerator, DefaultTopologyCreator
 
-__version__ = "0.3.0"
+__version__ = "6.0.0"
 
 __all__ = [
     "Application", "BernoulliDistribution", "BetaDistribution", "BinomialDistribution",
     "BrownianMobilityModel", "COLUMNS", "CategoricalDistribution", "CircularMobilityModel",
-    "CloudDataCenter", "ComputingNodesGenerator", "ConstantDistribution", "DatacenterSpec",
-    "DefaultMobilityModel", "DefaultNetworkModel", "DefaultOrchestrator", "DefaultTopologyCreator",
-    "DeviceSpec", "Distribution", "DistributionFactory", "EdgeDataCenter", "EdgeDevice",
+    "CloudDataCenter", "ComputingNode", "ComputingNodesGenerator", "ConstantDistribution", "DatacenterSpec",
+    "DefaultMobilityModel", "DefaultNetworkModel", "DefaultOrchestrator", "DefaultTaskGenerator",
+    "DefaultTopologyCreator", "DeviceSpec", "Distribution", "DistributionFactory", "EdgeDataCenter", "EdgeDevice",
     "Engine", "ErlangDistribution", "Event", "EventType", "ExponentialDistribution", "FutureQueue",
     "GammaDistribution", "GaussMarkovMobilityModel", "GeometricDistribution", "InfrastructureGraph",
     "LevyWalkMobilityModel", "LinkTechnology", "LinkType", "Location", "LogNormalDistribution",

@@ -28,9 +28,13 @@ def run(orchestrator, seed=42):
 @pytest.mark.parametrize("orchestrator", [GraphPartitioningOrchestrator, GeneticOrchestrator])
 def test_the_example_runs_every_generated_task(orchestrator):
     manager = run(orchestrator)
-    assert manager.metrics.generated_tasks > 0
-    assert manager.metrics.succeeded_tasks == manager.metrics.generated_tasks
-    assert manager.metrics.mist_tasks + manager.metrics.edge_tasks + manager.metrics.cloud_tasks > 0
+    metrics = manager.metrics
+    assert metrics.generated_tasks > 0
+    # The request deadline can fail a subtask that met its own bound, so the
+    # run is judged on reaching a terminal state, not on succeeding everywhere.
+    assert len(manager.finished_tasks) == metrics.generated_tasks
+    assert metrics.succeeded_tasks > 0
+    assert metrics.mist_tasks + metrics.edge_tasks + metrics.cloud_tasks > 0
 
 
 def test_the_graph_plan_spreads_the_subtasks_over_the_tiers():

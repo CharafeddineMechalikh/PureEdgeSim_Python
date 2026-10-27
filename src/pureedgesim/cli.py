@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
 def _print_models(verbose: bool) -> int:
     if verbose:
         for name in sorted(MobilityModelFactory.known_names()):
-            print(f"{name:14s} {MobilityModelFactory.known_models()[name].__name__}")
+            print(f"{name:14s} {MobilityModelFactory.MODELS[name].__name__}")
     else:
         print(", ".join(sorted(MobilityModelFactory.known_names())))
     return 0

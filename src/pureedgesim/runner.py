@@ -36,6 +36,8 @@ COLUMNS = [
     "First edge device death time (s)",
     "List of remaining power (%) (only battery powered devices / 0 = dead)",
     "List of the time when each device died (s)",
+    "Tasks skipped because their optional input failed", "Requests generated",
+    "Successful requests", "Average request makespan (s)",
 ]
 
 
@@ -47,14 +49,22 @@ def build_scenarios(parameters: SimulationParameters) -> list[Scenario]:
 
 
 def run_scenario(parameters: SimulationParameters, files: ScenarioFiles, scenario: Scenario,
-                 iteration: int, custom_mobility_model=None, custom_orchestrator=None) -> dict:
+                 iteration: int, custom_mobility_model=None, custom_orchestrator=None,
+                 custom_models: dict | None = None) -> dict:
     """One iteration: a fresh engine, a fresh manager, one result row."""
     # The seed travels with the parameters, so a worker process derives the same
     # stream as the main thread, like the static field does in PureEdgeSim.
+    models = custom_models or {}
+    manager_class = models.get("simulation_manager") or SimulationManager
     Randomness.set_seed(parameters.random_seed)
     Randomness.begin_scenario(iteration)
     engine = Engine(parameters.simulation_duration)
-    manager = SimulationManager(engine, parameters, files, scenario, custom_mobility_model, custom_orchestrator)
+    manager = manager_class(engine, parameters, files, scenario, custom_mobility_model, custom_orchestrator,
+                            custom_network_model=models.get("network_model"),
+                            custom_nodes_generator=models.get("nodes_generator"),
+                            custom_topology_creator=models.get("topology_creator"),
+                            custom_task_generator=models.get("task_generator"),
+                            custom_computing_node=models.get("computing_node"))
     manager.start_simulation()
     engine.start()
     return summarize(manager)
@@ -149,6 +159,11 @@ def summarize(manager: SimulationManager) -> dict:
         COLUMNS[50]: "-".join(str(round(node.get_remaining_battery_percentage(), 2)) if node.is_alive() else "0"
                               for node in battery_devices),
         COLUMNS[51]: "-".join(str(round(node.death_time, 2)) for node in dead_devices),
+        COLUMNS[52]: metrics.tasks_skipped,
+        COLUMNS[53]: metrics.generated_requests,
+        COLUMNS[54]: metrics.successful_requests,
+        COLUMNS[55]: _round(metrics.total_request_makespan / metrics.successful_requests
+                            if metrics.successful_requests else 0.0),
     }
     return row
 
@@ -167,6 +182,10 @@ class Simulation:
         self.files = files
         self.custom_mobility_model = None
         self.custom_orchestrator = None
+        # The remaining extension points, the counterpart of the setCustom... methods:
+        # keys are "network_model", "nodes_generator", "topology_creator",
+        # "task_generator", "computing_node" and "simulation_manager".
+        self.custom_models: dict[str, object] = {}
 
     def set_custom_mobility_model(self, model) -> "Simulation":
         self.custom_mobility_model = model
@@ -174,6 +193,28 @@ class Simulation:
 
     def set_custom_orchestrator(self, orchestrator) -> "Simulation":
         self.custom_orchestrator = orchestrator
+        return self
+
+    def set_custom_network_model(self, network_model) -> "Simulation":
+        return self._set_model("network_model", network_model)
+
+    def set_custom_computing_nodes_generator(self, nodes_generator) -> "Simulation":
+        return self._set_model("nodes_generator", nodes_generator)
+
+    def set_custom_topology_creator(self, topology_creator) -> "Simulation":
+        return self._set_model("topology_creator", topology_creator)
+
+    def set_custom_task_generator(self, task_generator) -> "Simulation":
+        return self._set_model("task_generator", task_generator)
+
+    def set_custom_computing_node(self, computing_node) -> "Simulation":
+        return self._set_model("computing_node", computing_node)
+
+    def set_custom_simulation_manager(self, simulation_manager) -> "Simulation":
+        return self._set_model("simulation_manager", simulation_manager)
+
+    def _set_model(self, key: str, model) -> "Simulation":
+        self.custom_models[key] = model
         return self
 
     def load(self) -> None:
@@ -203,7 +244,8 @@ class Simulation:
             rows = []
             for iteration, scenario in enumerate(scenarios):
                 rows.append(run_scenario(self.parameters, self.files, scenario, iteration,
-                                         self.custom_mobility_model, self.custom_orchestrator))
+                                         self.custom_mobility_model, self.custom_orchestrator,
+                                         self.custom_models))
                 _append_row(csv_path, rows[-1])
         if self.parameters.save_log_file:
             name = "Parallel_simulation.txt" if self.parameters.parallel_simulation else "Sequential_simulation.txt"
@@ -223,7 +265,7 @@ class Simulation:
 
         with ProcessPoolExecutor(max_workers=min(8, len(scenarios))) as pool:
             futures = [pool.submit(run_scenario, self.parameters, self.files, scenario, iteration,
-                                   self.custom_mobility_model, self.custom_orchestrator)
+                                   self.custom_mobility_model, self.custom_orchestrator, self.custom_models)
                        for iteration, scenario in enumerate(scenarios)]
             rows = [future.result() for future in futures]
         for row in rows:
@@ -248,9 +290,15 @@ def _text_report(row: dict) -> str:
              f"  Failed (death)       : {row[COLUMNS[11]]}",
              f"  Failed (mobility)    : {row[COLUMNS[12]]}",
              f"  Failed (dependency)  : {row[COLUMNS[14]]}",
+             f"  Skipped (optional)   : {row[COLUMNS[52]]}",
              f"  Not executed         : {row[COLUMNS[9]]}",
              f"  Average delay (s)    : {row[COLUMNS[4]]}",
              f"  Average CPU (%)      : {row[COLUMNS[28]]}",
              f"  Energy (Wh)          : {row[COLUMNS[32]]}",
-             f"  Dead devices         : {row[COLUMNS[46]]}"]
+             f"  Dead devices         : {row[COLUMNS[46]]}",
+             "",
+             "Requests",
+             f"  Generated            : {row[COLUMNS[53]]}",
+             f"  Successful           : {row[COLUMNS[54]]}",
+             f"  Average makespan (s) : {row[COLUMNS[55]]}"]
     return "\n".join(lines)
