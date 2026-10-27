@@ -75,7 +75,7 @@ Several choices are load-bearing for correctness and for CSV compatibility with 
 
 ## The documentation site
 
-The manual in `docs/` is published with GitHub Pages using the Jekyll Cayman theme. The root `_config.yml` sets the theme, title, and description, and enables `jekyll-relative-links` and `jekyll-sitemap`. The `_includes/head-custom.html` partial renders fenced ```` ```mermaid ```` blocks and builds the fixed documentation sidebar on the client, only for pages under `/docs/`. When you add a manual page, add its slug and label to the `pages` array in that file so it appears in the sidebar. Write plain markdown, keep cross-links to the Java manual as absolute URLs, and link internal pages by relative `.md` name.
+The manual in `docs/` is published with GitHub Pages using the Jekyll Cayman theme. The root `_config.yml` sets the theme, title, and description, and enables `jekyll-relative-links` and `jekyll-sitemap`. The `_includes/head-custom.html` partial renders fenced ```` ```mermaid ```` blocks and builds the fixed documentation sidebar on the client, on every page under `/docs/` and on the project home page. When you add a manual page, add its slug and label to the `pages` array in that file so it appears in the sidebar. Write plain markdown, keep cross-links to the Java manual as absolute URLs, and link internal pages by relative `.md` name.
 
 ## Making a change
 
