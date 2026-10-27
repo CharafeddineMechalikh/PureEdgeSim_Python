@@ -1,0 +1,8 @@
+theme: jekyll-theme-cayman
+title: PureEdgeSim for Python
+description: An open-source discrete-event simulator for cloud, edge, fog, and mist computing, implemented in Python.
+plugins:
+  - jekyll-relative-links
+  - jekyll-sitemap
+kramdown:
+  parse_block_html: true

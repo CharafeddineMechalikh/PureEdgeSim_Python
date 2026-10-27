@@ -40,13 +40,13 @@ at runtime.
 
 ```mermaid
 flowchart LR
-    subgraph P2["P0.2 mist - 1950 MI"]
+    subgraph P2["P0.2 cloud - 1950 MI"]
         capture["capture<br/>200 MI"] --> preprocess["preprocess<br/>600 MI"]
         track["track<br/>800 MI"] --> aggregate["aggregate<br/>300 MI"]
         aggregate --> notify["notify<br/>50 MI"]
     end
-    detect["detect<br/>4000 MI"]
-    classify["classify<br/>2500 MI"]
+    detect["detect<br/>4000 MI, P0.0 mist"]
+    classify["classify<br/>2500 MI, P0.1 edge"]
     preprocess -.->|20 kB| detect
     detect -.->|10 kB| classify
     detect -.->|10 kB| track
@@ -105,16 +105,25 @@ GraphPartitioningOrchestrator - Application 0 (Soft Real-time): 3 partitions, cu
   P0.0 ['detect'] (4000 MI)
   P0.1 ['classify'] (2500 MI)
   P0.2 ['capture', 'preprocess', 'track', 'aggregate', 'notify'] (1950 MI)
-tasks= 9600 ok= 9600 avg_delay=0.024    cloud=3537 edge=4350 mist=1713 failed(dependency)=   0 energy=49.3512
+tasks= 9600 ok= 5871 avg_delay=0.024    cloud=3537 edge=4350 mist=1713 failed(dependency)=   0 energy=49.4444
 ```
 
 - The cut counts how many dependency edges cross a partition boundary, and the
   traffic is the result size of their parents, which is what must travel between
   nodes at runtime.
 - The three partitions go to mist, edge, and cloud, so the run uses all three
-  tiers.
-- Every generated task succeeds, and no task is lost to a failed dependency.
-- Results go to `output/partitioning/`.
+  tiers, and they are not equally good at finishing what they were given. The
+  cloud, which receives the partition of five light stages (1950 MI in total),
+  returns 3500 successes out of 3537 placements; the mist, which carries `detect`,
+  returns 1152 of 1713; the edge, which carries `classify`, only 1219 of 4350. The
+  edge count is not the `classify` count, it also absorbs the fallback placements
+  of the monolithic application and of stages whose planned tier had no eligible
+  node.
+- Not every task succeeds: 5871 of the 9600 generated tasks clear their bound and
+  3729 fail on delay. No task is lost to a failed dependency, that column is 0, so
+  each loss is a slow stage rather than a skipped one. Of 5400 requests, 1671
+  complete, with an average makespan of 4.8722 s.
+- Results go to `examples/graph_partitioning/output/`.
 
 Change `PARTITIONS_PER_COMPONENT` to see the trade-off: more partitions spread
 the load further but cut more edges.

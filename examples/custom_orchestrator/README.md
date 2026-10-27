@@ -56,16 +56,24 @@ python examples/custom_orchestrator/custom_orchestrator.py
 
 ```text
 orchestration strategy, same seed and same workload:
-TRADE_OFF (default)      tasks= 1035 ok=  775 avg_delay=0.2024   cloud= 135 edge= 436 mist= 464 energy=11.6066
-nearest node             tasks= 1035 ok=  781 avg_delay=0.2037   cloud=   0 edge= 522 mist= 513 energy=11.4243
+TRADE_OFF (default)      tasks= 1035 ok=  285 avg_delay=0.1994   cloud= 269 edge= 318 mist= 448 energy=11.6627
+nearest node             tasks= 1035 ok=  285 avg_delay=0.201    cloud=   0 edge= 560 mist= 475 energy=11.4793
 ```
 
 - The nearest-node policy never selects the cloud, because an edge data center
-  or a neighbour is always closer.
-- The average delay moves little: the policy saves the WAN round trip but sends
-  more tasks to slower mist devices.
-- The energy drops slightly, the Wi-Fi and Ethernet links costing less than the
-  WAN link per bit.
+  or a neighbour is always closer: the 269 cloud placements of the default run
+  become 0, and the edge absorbs most of them (318 to 560). The CSV confirms the
+  routing changed, not just the labels, the WAN usage column falls from 388.804 s
+  to 0.0 s while LAN usage rises from 3.78 s to 6.20 s.
+- The average delay moves little, and honestly it moves the wrong way, 0.1994 s to
+  0.201 s: the policy saves the WAN round trip but sends more tasks to slower
+  mist devices and to busy edge hosts.
+- The success count does not move at all (285 of 1035 in both runs), so on this
+  scenario the rule reshapes the placement map without rescuing a single task. It
+  does shift where the wins come from: 30 cloud and 60 edge successes for
+  `TRADE_OFF`, 0 cloud and 90 edge for the nearest rule, mist unchanged at 195.
+- The energy drops slightly, 11.6627 Wh to 11.4793 Wh, the Wi-Fi and Ethernet
+  links costing less than the WAN link per bit.
 - Results go to `examples/custom_orchestrator/output/`.
 
 Change the ordering key to see the trade-off: prefer the fastest node instead of

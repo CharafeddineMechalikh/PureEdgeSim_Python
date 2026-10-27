@@ -81,15 +81,28 @@ The console prints the estimated fitness and the node chosen for every subtask:
 ```text
 GeneticOrchestrator - Application 0 (Soft Real-time): fitness 0.0768 (makespan 0.0697 s, transfers 0.0011 s, imbalance 0.6244)
   {'capture': 'Mist#65', 'preprocess': 'Mist#65', 'detect': 'Mist#64', 'classify': 'Mist#54', 'track': 'Edge#2', 'aggregate': 'Mist#54', 'notify': 'Mist#54'}
-tasks= 9600 ok= 9600 avg_delay=0.0252 cloud= 984 edge=5861 mist=2755 failed(dependency)=   0 energy=49.2382
+tasks= 9600 ok= 5873 avg_delay=0.0252   cloud= 984 edge=5861 mist=2755 failed(dependency)=   0 energy=49.3169
 ```
 
 - The fitness is an estimate made before the run, so compare it with the cut of
   the graph example rather than with the measured delay.
 - The search keeps most of the pipeline close to the devices and sends stages to
-  the edge only when the estimated transfer cost pays off.
-- Every generated task succeeds, and no task is lost to a failed dependency.
-- Results go to `output/partitioning/`.
+  the edge only when the estimated transfer cost pays off: six of the seven stages
+  land on mist devices, only `track` goes to `Edge#2`.
+- Not every task succeeds. 5873 of the 9600 generated tasks clear their bound and
+  3727 fail on delay, so the honest reading is 61% success, not a clean sweep. No
+  task is lost to a failed dependency, that column is 0, so every loss is a stage
+  that ran too slowly rather than a stage skipped after its parent died. The
+  per-tier success counts explain where the losses are: 2196 of 2755 mist
+  placements succeed (80%), against 3153 of 5861 on the edge (54%) and 524 of 984
+  on the cloud (53%).
+- Against the graph cut of the other example, on the same scenario, the search wins
+  by a hair: 5873 successes against 5871, 1673 of 5400 requests completed against
+  1671, and an average request makespan of 4.0867 s against 4.8722 s. Since both
+  lose about 3730 tasks on delay and neither loses one to a failed dependency, the
+  binding constraint on this workload is the per-stage latency budget, not the way
+  the graph was cut.
+- Results go to `examples/genetic_partitioning/output/`.
 
 Set `random_seed` in the settings file and remove it again to see the plan
 change for the same scenario.

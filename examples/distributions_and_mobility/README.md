@@ -65,17 +65,23 @@ python examples/distributions_and_mobility/distributions_and_mobility.py
 ## What to look for
 
 ```text
-constants, static      tasks= 1035 ok=  775 delay=0.2024   failed(delay)= 260 failed(mobility)=   0 energy=11.6066
-distributions, mobile  tasks= 1006 ok=  793 delay=0.2132   failed(delay)= 213 failed(mobility)=   0 energy=10.9223
+constants, static      tasks= 1035 ok=  285 delay=0.1994   failed(delay)= 750 failed(mobility)=   0 energy=11.6627
+distributions, mobile  tasks= 1006 ok=  576 delay=0.2129   failed(delay)= 430 failed(mobility)=   0 energy=10.9468
 ```
 
-- The task count changes: the exponential gaps produce a different number of
-  requests in the same simulated time.
-- Fewer tasks miss their deadline in the second run, even though the mean delay
-  is higher, because the lognormal mix includes many short tasks.
-- `failed(mobility)` stays at zero: moving devices leave and re-enter range, but
-  they are not lost, so mobility changes the destination, not the outcome.
-- Results go to `examples/distributions_and_mobility/output/`.
+- The task count changes (1035 to 1006): the exponential gaps produce a different
+  number of requests in the same simulated time.
+- Fewer tasks miss their deadline in the second run (750 to 430), so 576 succeed
+  against 285, even though the mean delay is higher (0.1994 s to 0.2129 s),
+  because the lognormal mix includes many short tasks: the average is dragged up
+  by the long draws while the short ones clear their budget. The per-tier columns
+  show where the gain is, the mist tier returns 447 successes out of 457
+  placements in the distributed run against 195 out of 448 in the constant one.
+- `failed(mobility)` stays at zero in both rows: moving devices leave and re-enter
+  range, but they are not lost, so mobility changes the destination, not the
+  outcome.
+- Results go to `examples/distributions_and_mobility/output/`, where both runs are
+  appended to one `Sequential_simulation.csv`.
 
 Replace the `gauss-markov` model by `manhattan`, `levy-walk`, or the other models
 listed in the README to compare movement patterns under the same workload.

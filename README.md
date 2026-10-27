@@ -10,11 +10,12 @@
 **PureEdgeSim is now available in Python.** This is the same simulator in another language,
 not a redesign of it: the same discrete-event engine, the same task lifecycle, the same
 orchestration algorithms, energy models and mobility models, the same five settings files
-and the same 51-column CSV, so a study run here can be placed side by side with the same
+and the same 56-column CSV, so a study run here can be placed side by side with the same
 study run in [PureEdgeSim (Java)](https://github.com/CharafeddineMechalikh/PureEdgeSim).
 
 Install it with `pip`, import it as `pureedgesim`, and run it with the `pureedgesim`
-command; the classes, parameters and reported columns keep their PureEdgeSim names.
+command; the classes, parameters and reported columns keep their PureEdgeSim names. The
+manual is at [charafeddinemechalikh.github.io/PureEdgeSim_Python/docs](https://charafeddinemechalikh.github.io/PureEdgeSim_Python/docs/).
 
 The core needs the Python standard library only (Python 3.10 or later). The one optional
 extra is pytest, to run the test suite. The live Swing charts of the Java framework are not
@@ -48,11 +49,11 @@ pureedgesim run --settings examples/default_settings --devices 50 --duration 10 
 ```
 
 ```text
-Ran 6 scenario(s), results in output\2026-10-25_18-04-44
-  MIST_AND_EDGE  TRADE_OFF        50 tasks=  5330 ok=  4203 avg_delay=0.1801 energy=31.2367
-  MIST_AND_EDGE  ROUND_ROBIN      50 tasks=  5330 ok=  4235 avg_delay=0.2059 energy=31.0528
-  ALL            TRADE_OFF        50 tasks=  5330 ok=  4207 avg_delay=0.2259 energy=31.3508
-  ALL            ROUND_ROBIN      50 tasks=  5330 ok=  4326 avg_delay=0.2062 energy=30.9944
+Ran 6 scenario(s), results in output\2026-10-27_15-27-55
+  MIST_AND_EDGE  TRADE_OFF        50 tasks=  5330 ok=  1226 avg_delay=0.197 energy=30.977
+  MIST_AND_EDGE  ROUND_ROBIN      50 tasks=  5330 ok=  1231 avg_delay=0.2101 energy=31.0616
+  ALL            TRADE_OFF        50 tasks=  5330 ok=  1229 avg_delay=0.2274 energy=31.8876
+  ALL            ROUND_ROBIN      50 tasks=  5330 ok=  1829 avg_delay=0.2074 energy=31.139
   CLOUD_ONLY     TRADE_OFF        50 tasks=  5330 ok=   630 avg_delay=0.1693 energy=36.4156
   CLOUD_ONLY     ROUND_ROBIN      50 tasks=  5330 ok=   630 avg_delay=0.1693 energy=36.4156
 ```
@@ -140,8 +141,8 @@ distributions, mobile  tasks= 1006 ok=  793 delay=0.2132   failed(delay)= 213 fa
 [`examples/graph_partitioning/`](examples/graph_partitioning/README.md) and
 [`examples/genetic_partitioning/`](examples/genetic_partitioning/README.md)
 partition a service graph instead of treating one request as one task. Both run
-the video analytics pipeline of `examples/partitioning_settings` (seven subtasks)
-and share the solvers in `src/pureedgesim/partitioning.py`:
+their own copy of the video analytics pipeline, seven subtasks in
+`settings/applications.xml`, and share the solvers in `src/pureedgesim/partitioning.py`:
 
 - the first cuts every connected component into balanced partitions (heaviest step
   first, then Kernighan-Lin style pair swaps that remove dependency edges) and maps the
@@ -216,16 +217,29 @@ omitted attributes inherit it. Names must be unique, every dependency must exist
 the graph must be acyclic; a violation raises a `ValueError` naming the file,
 application, and subtask.
 
+The graph carries its data and its deadline. The `results_size` of each parent is
+added to the `request_size` of its children, so the payload of a dependency travels
+over the network, and the application `latency` is drawn once per request and shared
+by every subtask as an end-to-end deadline: a result that returns at or after it fails
+even when the subtask met its own bound.
+
 When a subtask fails, its whole subtree fails with
 `FAILED_BECAUSE_DEPENDENCY_FAILED` and is counted in the "Tasks not executed because a
-dependency failed" column. Applications without `<subtask>` elements produce exactly
-one independent task per request, as before.
+dependency failed" column. A subtask marked `optional="true"` is skipped instead, with
+status `SKIPPED`: its dependents are released without the missing input and the request
+still counts as successful. An optional subtask must have at least one dependency,
+because an optional root could never be skipped. Applications without `<subtask>`
+elements produce exactly one independent task per request, as before.
+
+The report measures requests as well as tasks: how many were generated, how many
+completed, and the average end-to-end makespan of the successful ones, in four columns
+appended at the end of the CSV row and in a `Requests` block of the text report.
 
 The application placement is shared by default: the first subtask decides where the
 application runs, and the following subtasks reuse that destination. An orchestrator
 that routes subtasks to different nodes clears the placement after each decision with
-`task.source_device.application_placed = False`. The two partitioning examples below
-do that.
+`task.source_device.application_placed = False`. The two partitioning examples in
+[Custom policies](#custom-policies) do that.
 
 Mobility models are selected with the `model` attribute of the `<mobility>` element,
 and their options are extra attributes:
@@ -257,7 +271,7 @@ equivalents.
 
 ## Output
 
-`Sequential_simulation.csv` (or `Parallel_simulation.csv`) holds the 52 PureEdgeSim
+`Sequential_simulation.csv` (or `Parallel_simulation.csv`) holds the 56 PureEdgeSim
 columns, in the Java order, plus a `Sequential_simulation.txt` summary per scenario
 when `save_log_file=true`. `pureedgesim.runner.COLUMNS` is that column list.
 
@@ -277,7 +291,7 @@ the element, and the cause; nothing is silently skipped.
 
 ```bash
 pip install -e .[test]
-pytest              # 278 tests, the core, the settings readers, the CLI, and the examples
+pytest              # 491 tests, the core, the settings readers, the CLI, and the examples
 ```
 
 The integration tests build real managers and run them to the end, so the counters
@@ -319,7 +333,9 @@ Mechalikh, C., Silem, A. E. H., Safavifar, Z., & Golpayegani, F. (2025). Quality
 ## See also
 
 - [PureEdgeSim (Java)](https://github.com/CharafeddineMechalikh/PureEdgeSim): the original
-  framework, its live charts and its [documentation](https://github.com/CharafeddineMechalikh/PureEdgeSim/tree/master/docs).
+  framework, its live charts and its [documentation](https://charafeddinemechalikh.github.io/PureEdgeSim/docs/).
+- [PureEdgeSim for Python documentation](https://charafeddinemechalikh.github.io/PureEdgeSim_Python/docs/):
+  this manual, built from the `docs/` folder.
 - [Issues](https://github.com/CharafeddineMechalikh/PureEdgeSim_Python/issues) for this port.
 
 ## License
