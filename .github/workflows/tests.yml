@@ -3,6 +3,8 @@ name: tests
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.github/badges/**'
   pull_request:
 
 jobs:
@@ -22,6 +24,8 @@ jobs:
 
   coverage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,4 +33,18 @@ jobs:
           python-version: "3.12"
       - run: pip install -e .[test]
       - name: Measure coverage
-        run: pytest --cov=pureedgesim --cov-report=term-missing --cov-fail-under=95
+        run: pytest --cov=pureedgesim --cov-report=term-missing --cov-report=xml --cov-fail-under=95
+      - name: Write the coverage badge
+        run: python .github/scripts/coverage_badge.py coverage.xml .github/badges/coverage.json
+      - name: Commit the badge
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/coverage.json
+          if git diff --cached --quiet; then
+            echo "No coverage changes to commit."
+          else
+            git commit -m "Update coverage badge"
+            git push
+          fi
