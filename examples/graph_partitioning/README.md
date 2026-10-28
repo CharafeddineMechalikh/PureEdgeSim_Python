@@ -105,24 +105,26 @@ GraphPartitioningOrchestrator - Application 0 (Soft Real-time): 3 partitions, cu
   P0.0 ['detect'] (4000 MI)
   P0.1 ['classify'] (2500 MI)
   P0.2 ['capture', 'preprocess', 'track', 'aggregate', 'notify'] (1950 MI)
-tasks= 9600 ok= 5871 avg_delay=0.024    cloud=3537 edge=4350 mist=1713 failed(dependency)=   0 energy=49.4444
+
+tasks= 9600 ok= 9600 avg_delay=0.024    cloud=3537 edge=4349 mist=1714 failed(dependency)=   0 energy=47.9631
 ```
 
 - The cut counts how many dependency edges cross a partition boundary, and the
   traffic is the result size of their parents, which is what must travel between
   nodes at runtime.
 - The three partitions go to mist, edge, and cloud, so the run uses all three
-  tiers, and they are not equally good at finishing what they were given. The
-  cloud, which receives the partition of five light stages (1950 MI in total),
-  returns 3500 successes out of 3537 placements; the mist, which carries `detect`,
-  returns 1152 of 1713; the edge, which carries `classify`, only 1219 of 4350. The
-  edge count is not the `classify` count, it also absorbs the fallback placements
-  of the monolithic application and of stages whose planned tier had no eligible
-  node.
-- Not every task succeeds: 5871 of the 9600 generated tasks clear their bound and
-  3729 fail on delay. No task is lost to a failed dependency, that column is 0, so
-  each loss is a slow stage rather than a skipped one. Of 5400 requests, 1671
-  complete, with an average makespan of 4.8722 s.
+  tiers, and with the corrected network model each one now finishes everything it
+  was given: 100.0 percent success on all three. The cloud, which receives the
+  partition of five light stages (1950 MI in total), returns 3537 successes out of
+  3537; the mist, which carries `detect`, 1714 of 1714; the edge, which carries
+  `classify`, 4349 of 4349. The edge count is not the `classify` count, it also
+  absorbs the fallback placements of the monolithic application and of stages
+  whose planned tier had no eligible node.
+- Every task now clears its bound: 9600 of the 9600 generated tasks succeed and 0
+  fail on delay. A transfer that ends at its exact completion time, rather than
+  the next one-second poll, keeps the soft real-time pipeline within budget. No
+  task is lost to a failed dependency, that column is 0. All 5400 requests
+  complete, with an average makespan of 0.121 s.
 - Results go to `examples/graph_partitioning/output/`.
 
 Change `PARTITIONS_PER_COMPONENT` to see the trade-off: more partitions spread

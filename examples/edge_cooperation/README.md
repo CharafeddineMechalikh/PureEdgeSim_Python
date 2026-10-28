@@ -21,8 +21,8 @@ that: any edge data center the device still reaches inside
 flowchart LR
     dev["device"] -->|"nearest, EDGE"| sdc["serving edge data center"]
     sdc --> elig["eligible_for, any DC in range"]
-    elig --> local["local, 26079"]
-    elig --> ring["forwarded over the MAN ring, 17421"]
+    elig --> local["local, 23679"]
+    elig --> ring["forwarded over the MAN ring, 19821"]
     elig --> cloud["cloud over the WAN, 7250"]
     classDef coop fill:#cfe8ff,stroke:#333;
     class elig,ring coop;
@@ -62,32 +62,47 @@ comparison for this example.
 ## What to look for
 
 ```text
-CooperativeEdgeOrchestrator - served by 4 edge orchestrators: 26079 local, 17421 forwarded over the MAN ring, 7250 to cloud, MAN usage 6021.572 s
-EDGE_AND_CLOUD   devices= 500 tasks= 50750 ok=  5250 avg_delay=0.1586   cloud= 7250 edge=43500 mist=    0 failed(delay)=45500 energy=237.9948
+CooperativeEdgeOrchestrator - served by 4 edge orchestrators: 23679 local, 19821 forwarded over the MAN ring, 7250 to cloud, MAN usage 1995.600 s
+EDGE_AND_CLOUD   devices= 500 tasks= 50750 ok= 32093 avg_delay=0.1586   cloud= 7250 edge=43500 mist=    0 failed(delay)=18657 energy=238.7441
 ```
 
-Results go to `examples/edge_cooperation/output/`. Both blocks are measured, not
-in the same launch: `random_seed` is empty, so the split between local and
-forwarded, and the energy column, move from run to run (the launch that printed
-the line above ended at 238.34 Wh, the CSV on disk records 237.99 Wh), while the
+Results go to `examples/edge_cooperation/output/`. Both blocks above come from the
+same measured launch of 2026-10-28 and they agree: the two counters add up to the
+CSV edge total (23679 local + 19821 forwarded = 43500), and the printed energy,
+238.7441 Wh, is the value of the CSV column. `random_seed` is still empty, so a
+re-run moves the split between local and forwarded and the energy column, while the
 task totals repeat because the workload and the topology do not.
 
 - Cooperation really happens. All 500 devices fall within the 1000 m coverage of
   the corner data centers, so all four act as orchestrators, and of the 43500 tasks
-  that ran at the edge tier, 17421 were forwarded to a neighbour over the ring.
-  Those two counts add to the CSV edge total (26079 local + 17421 forwarded =
-  43500), and adding the 7250 cloud tasks accounts for all 50750 generated tasks.
-- Success is deliberately low, 5250 of 50750 tasks, and the reason is visible in
-  the app list: the Health application demands a 0.02 s response. A forwarded task
-  pays 0.01 s per MAN hop on top of queuing, so 45500 tasks fail on delay.
-  Cooperation balances the load but cannot rescue a sub-frame deadline, and that is
-  the honest trade-off of routing to a neighbour instead of dropping locally.
-- The MAN carries the time, not the energy. MAN usage is 6021.572 s of transfer
-  time in the printed run, yet the CSV "MAN energy consumption" column is 0.00 Wh
-  because `man_nanojoules_per_bit=0`. Most of the 237.99 Wh is spent by the mobile
-  fleet (the mist energy column is 150.93 Wh, the edge column 78.47 Wh, the cloud
-  column 8.59 Wh), and the per-link accounting puts 285.50 Wh on the cellular
-  access, while the edge tier runs at 28.14% average CPU.
+  that ran at the edge tier, 19821 were forwarded to a neighbour over the ring
+  (45.6 percent of the edge work left the data center that owned the decision)
+  against 23679 kept locally. Those two counts add to the CSV edge total (23679
+  local + 19821 forwarded = 43500), and adding the 7250 cloud tasks accounts for all
+  50750 generated tasks.
+- Success is bounded by the tightest deadline, not by the ring: 32093 of the 50750
+  tasks, about 63 percent, finish inside their budget and 18657 fail on delay, while
+  the columns for mobility and for dead batteries are both 0 (no device died, the
+  fleet ends at 98.70% of its charge). The Health application demands a 0.02 s
+  response, and a forwarded task pays 0.01 s per MAN hop on top of queuing, so the
+  hard-real-time requests are what set the floor. What decides the rest is the
+  destination: edge placements succeed 66.6 percent of the time (28970 of 43500)
+  against 43.1 percent on the cloud (3123 of 7250), so handing a task to a neighbour
+  now beats shipping it to the WAN, and cooperation is a win instead of a rescue
+  attempt. The average completed delay of 0.1586 s is an average over successes
+  only, so it says nothing about the 18657 tasks that missed their bound, and the
+  902.61 s of total waiting time (0.0178 s per task) shows the four data centers
+  are loaded, not saturated.
+- The MAN carries the time, not the energy. MAN usage is 1995.600 s of transfer
+  time in the printed run, sitting between the 2466.41 s of the LAN and the 287.05 s
+  of the WAN inside the 4749.06 s of total network usage, and it now stops when the
+  last hop is really finished instead of waiting for the next 1 s polling tick. The
+  CSV "MAN energy consumption" column is still 0.00 Wh because
+  `man_nanojoules_per_bit=0`. Most of the 238.74 Wh is spent by the mobile
+  fleet (the mist energy column is 150.94 Wh, the edge column 78.32 Wh, the cloud
+  column 9.48 Wh), and the separate per-link accounting puts 644.43 Wh on the
+  cellular access and 24.25 Wh on Wi-Fi, while the edge tier runs at 27.69% average
+  CPU and the run moves 98234.27 MB of traffic.
 - Mist is empty (`mist=0`): with a 10 m device range no device can host a
   neighbour's task, so the whole fleet is split between edge and cloud only. The
   mist energy column above is the devices drawing power for their own tasks, not

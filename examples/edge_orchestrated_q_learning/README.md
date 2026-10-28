@@ -57,24 +57,30 @@ PYTHONPATH=src python examples/edge_orchestrated_q_learning/edge_orchestrated_q_
 ## What to look for
 
 ```text
-edge orchestrated  tasks= 56550 ok= 5850 avg_delay=0.1622 cloud=48180 edge=7095 mist=1275 energy=236.1275
+edge orchestrated        tasks= 56550 ok= 40930 avg_delay=0.1649   cloud=14674 edge=38713 mist= 3163 failed(delay)=15620 failed(mobility)=   0 energy=205.2936
 ```
 
-- 48180 of 56550 tasks, roughly 85 percent, end up on the cloud, and 50700 fail
-  on delay, so only 5850 succeed. Delegation did not make the learner pick
-  smarter, it pushed it harder toward the tier that drains the fastest per task
-  once every request first crosses the MAN link.
-- The average completed delay, 0.1622 s, is the lowest of the family, and that is
-  the honest read: it is low because the latency bound filtered out everything
-  slow, leaving only quick successes in the average, not because the policy got
-  better. The success rate (5850 over 56550, about 10 percent) is far below the
-  on-device Q-learning run, so this is a regression on throughput bought with a
-  lower per-task delay.
-- Energy is 236.13 Wh for ten simulated minutes across 500 devices, the largest
-  number in the family. The per-tier split says where it goes: mist 120.08 Wh,
-  edge 73.29 Wh and cloud 42.75 Wh, so the bill is the fleet plus the four data
-  centers running, and inside it the access links account for 47.05 Wh of Wi-Fi
-  against 0.01 Wh on the WAN, far less than a cloud-heavy placement suggests.
+- 38713 of 56550 tasks, roughly 68 percent, run at the edge, 14674 (about 26
+  percent) go to the cloud and only 3163 stay in the mist, so 15620 tasks fail on
+  delay and 40930 succeed. Delegation did not stop the learner from wasting work on
+  the cloud, it just moved the rest of the load onto the data centers: the edge
+  successes are 37485 of 38713 (96.8%) and the mist 2905 of 3163 (91.8%), while the
+  cloud brings only 540 of 14674 (3.7%), which is 14134 of the 15620 delay
+  failures. The CSV shows why: of the 13156.58 s of network time in this run,
+  12516.25 s are spent on the single shared WAN link against 480.96 s on the LAN,
+  so a task that leaves the neighbourhood queues behind every other task that does.
+- The average completed delay, 0.1649 s, is the lowest of the family (the on-device
+  run reaches 0.1742 s, the mist-only run 0.2539 s), and that is the honest read:
+  it is low because the latency bound filtered out everything slow, leaving only
+  quick successes in the average, not because the policy got better. The success
+  rate (40930 over 56550, about 72 percent) now sits close to the on-device
+  Q-learning run, where 4128 of 5550 tasks succeed (about 74 percent), so
+  delegating the decision costs a little throughput and buys a shorter delay.
+- Energy is 205.29 Wh for ten simulated minutes across 500 devices, the largest
+  number in the family. The per-tier split says where it goes: mist 121.09 Wh,
+  edge 79.53 Wh and cloud 4.68 Wh, so the bill is the fleet plus the four data
+  centers running, and inside it the access links account for 49.13 Wh of Wi-Fi
+  against 0.21 Wh on the WAN, far less than a cloud-heavy placement suggests.
 - Results go to `examples/edge_orchestrated_q_learning/output/`, where the CSV
   holds this full scenario as a single row, so every number above is readable
   from it.

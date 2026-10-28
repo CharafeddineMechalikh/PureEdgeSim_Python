@@ -72,35 +72,43 @@ PYTHONPATH=src python examples/multi_access_mec/multi_access_mec.py
 The console ends with the per-technology placements and the result row:
 
 ```text
-AccessAwareOrchestrator - placements by access technology and tier: cellular/edge=16512, cellular/mist=511, wifi/edge=18591, wifi/mist=39
-ACCESS_AWARE     devices= 300 tasks= 43500 ok=  6862 failed(delay)=36638 avg_delay=0.1381   cloud=   0 edge=39649 mist=3851 wan_usage=88.616    energy=177.045
+AccessAwareOrchestrator - placements by access technology and tier: cellular/edge=4420, cellular/mist=225, wifi/edge=180
+ACCESS_AWARE     devices= 300 tasks= 43500 ok= 38900 failed(delay)= 4600 avg_delay=0.107    cloud=   0 edge=42973 mist= 527 wan_usage=0.0       energy=179.5285
 ```
 
 | Access technology | Placements on the edge | Placements on the mist |
 | --- | --- | --- |
-| cellular | 16512 | 511 |
-| Wi-Fi | 18591 | 39 |
+| cellular | 4420 | 225 |
+| Wi-Fi | 180 | 0 |
 
-- Both technologies overwhelmingly choose the edge, so the tier balance, 39649
-  tasks on the edge against 3851 on the mist, is dominated by edge data centers
-  being fast and Wi-Fi devices being within reach. No task runs on the cloud,
-  because the 20 Mbps plus 60 ms WAN term is added to every cloud estimate and
-  keeps it above the edge and mist alternatives.
+- Both technologies overwhelmingly choose the edge, so the tier balance, 42973
+  tasks executed on the edge against 527 on the mist, is dominated by edge data
+  centers being fast and Wi-Fi devices being within reach. No task runs on the
+  cloud, because the 20 Mbps plus 60 ms WAN term is added to every cloud estimate
+  and keeps it above the edge and mist alternatives. The result row reports
+  `wan_usage=0.0` and 0.0 Wh of MAN energy: the metro router to cloud hop is typed
+  IGNORE, so it delays a task but moves no usage or energy counter, and the only
+  edge data center hanging on that router is `dc1`, so the device to edge traffic
+  runs over the Wi-Fi and LTE access links and lands on the LAN, which carries
+  2184.2456 s of the 2187.48 s of total network usage and all of the network
+  energy.
 - The access-aware distinction lives in the mist column. Cellular devices reach
-  the mist 511 times out of 17023 placements, about 3.0 percent, while Wi-Fi
-  devices do it only 39 times out of 18630, about 0.21 percent. A slow cellular
-  uplink inflates the edge estimate, so a nearby fast laptop on the direct Wi-Fi
-  link wins, an outcome the Wi-Fi devices rarely see.
+  the mist 225 times out of 4645 placements, about 4.8 percent, while Wi-Fi
+  devices never do, 0 out of 180. A slow cellular uplink inflates the edge
+  estimate, so a nearby fast laptop on the direct Wi-Fi link wins, an outcome a
+  Wi-Fi device, whose own uplink to the edge is already fast, does not see.
 - The cellular traffic dominates the radio bill even though it is only 40 percent
-  of the devices: 237.5002 Wh of LTE network energy against 14.2998 Wh of Wi-Fi,
+  of the devices: 558.2126 Wh of LTE network energy against 20.1575 Wh of Wi-Fi,
   which is what the 100 Mbps and 30 ms link costs to push the same bytes. The
-  compute energy, 104.8852 Wh mist and 72.1598 Wh edge, sums to the 177.045 Wh
+  compute energy, 106.781 Wh mist and 72.7475 Wh edge, sums to the 179.5285 Wh
   reported for computing nodes.
-- The cost side is the same load pressure the other fog examples show. The fleet
-  generates 43500 requests and only 6862 succeed, 15.77 percent, with 36638
-  missing their latency budget, because 300 busy devices saturate the four edge
-  servers; the average compute time stays low at 0.1381 s and the average request
-  makespan at 1.3417 s.
+- The load pressure the other fog examples show no longer breaks the run. The
+  fleet generates 43500 requests and 38900 succeed, 89.43 percent, with only 4600
+  missing their latency budget; the average compute time is 0.107 s and the
+  average request makespan 0.1486 s. Transfers that used to be rounded up to the
+  next one-second poll no longer push a task over its budget, so the four edge
+  servers absorb the 300-device load at 11.525 percent average edge CPU usage
+  instead of backing up.
 
 Set `cellular_bandwidth` to 10 to widen the gap: cellular tasks pay ten times the
 uplink transfer, more of them fall to a mist node, and the delay-failure count

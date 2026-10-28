@@ -76,24 +76,27 @@ task), so give it a few minutes.
 ## What to look for
 
 ```text
-CONTEXT_AWARE  devices= 300 tasks= 43500 ok= 11715 avg_delay=0.3687 cloud=13639 edge=13378 mist=16483 energy=179.2471
+CONTEXT_AWARE            devices= 300 tasks= 43500 ok= 37637 avg_delay=0.1531   cloud= 7164 edge=33629 mist= 2707 energy=197.7162
 ```
 
-- The network keeps the three tiers almost equally loaded (13639 cloud, 13378
-  edge, 16483 mist) instead of converging on one. That is not a flaw: the load
-  features reward spreading, and the slow epsilon decay (0.999 per decision) keeps
-  the policy sampling long after a table agent would have settled.
-- Success is won in the mist, with 8745 of 16483 tasks clearing their budget
-  (53%), versus 1890 of 13378 on the edge (14%) and 1080 of 13639 on the cloud
-  (7.9%), so the value function still ranks mist highest once the context is fed
+- The network now loads the edge almost entirely (33629 edge, against 7164 cloud
+  and 2707 mist) instead of spreading across the three tiers. The strong edge data
+  centers (16 cores at 60000 MIPS) dominate every context the value function
+  sees, so once a tier wins early it keeps winning, and the slow epsilon decay
+  (0.999 per decision) is no longer enough to pull the policy back to the others.
+- Success is won in the edge, with 31848 of 33629 tasks clearing their budget
+  (94.7%), versus 2069 of 2707 in the mist (76.4%) and 3720 of 7164 in the cloud
+  (51.9%), so the value function ranks the edge highest once the context is fed
   through the network.
-- The headline average delay, 0.3687 s, is far above the 5-minute table-based
-  examples, and the honest reason is the scenario, not the policy. The run is
-  twice as long, so the fleet drains and congests more, and 40% of the devices
-  reach the network over the slower cellular link: LTE transfer energy alone is
-  69.55 Wh of the 179.25 Wh total, and network usage is 256328 s against the 36718 s
-  of the ant colony run. Do not read 0.3687 as "worse than the others"; it is not
-  a like-for-like comparison.
+- The headline average delay, 0.1531 s, is now below the five-minute policies on
+  the ant colony topology (the ant colony itself is 0.1666), but the honest reason
+  is the scenario, not the policy: this run uses the stronger 60000 MIPS edge, so
+  with the corrected transfer model most edge jobs finish fast. The run is still
+  twice as long, and 40% of the devices reach the network over the slower cellular
+  link, so its energy and traffic are far larger than the five-minute runs: LTE
+  transfer energy alone is 468.79 Wh, the computing-node total is 197.72 Wh, and
+  network usage is 5522.77 s against the 767.19 s of the ant colony run. Do not
+  read 0.1531 as "better than the others"; it is not a like-for-like comparison.
 - Results go to `examples/contextaware_drl/output/`.
 
 Raise `EPSILON_DECAY` toward 1.0 (slower decay) to keep exploring, or lower it to

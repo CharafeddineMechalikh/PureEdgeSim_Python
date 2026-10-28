@@ -61,8 +61,26 @@ An optional device count and output folder shrink the tour further.
 ## What to look for
 
 ```text
-stock models                 tasks= 1035 ok=  285 avg_delay=0.1994   energy=11.6627  cpu=0.5838%
-eight custom models          tasks= 1035 ok=  285 avg_delay=0.1994   energy=11.6627  cpu=0.5838%
+extension point                class                      first use
+simulation manager           TourSimulationManager    scenario ALL/TRADE_OFF/20
+computing nodes generator    TourNodesGenerator       1 cloud, 1 edge, 20 devices
+topology creator             TourTopologyCreator      84 directed links
+task generator               TourTaskGenerator        1035 tasks
+mobility model               TourMobilityModel        starts at (85, 176)
+computing node               TourComputingNode        cloud 0 received its first event
+orchestrator                 TourOrchestrator         task 451 -> wifi device 15
+network model                TourNetworkModel         first transfer: task to destination
+simulation manager           TourSimulationManager         1 uses
+network model                TourNetworkModel           2070 uses
+computing nodes generator    TourNodesGenerator            1 uses
+topology creator             TourTopologyCreator           1 uses
+task generator               TourTaskGenerator             1 uses
+mobility model               TourMobilityModel            20 uses
+orchestrator                 TourOrchestrator            291 uses
+computing node               TourComputingNode          8053 uses
+
+stock models                 tasks= 1035 ok=  751 avg_delay=0.2025   energy=11.5627  cpu=0.6342%
+eight custom models          tasks= 1035 ok=  751 avg_delay=0.2025   energy=11.5627  cpu=0.6342%
 
 same results with and without the custom classes: True
 ```
@@ -70,15 +88,17 @@ same results with and without the custom classes: True
 - The headline is `same results with and without the custom classes: True`, and it
   is not just a printed flag. The newest timestamped folder holds one
   `Sequential_simulation.csv` with two rows, the stock run and the toured run, and
-  all 56 columns match byte for byte, tasks 1035, ok 285, average delay 0.1994 s,
-  energy 11.6627 Wh, CPU 0.5838%. Because every observer only delegates, injecting
+  all 56 columns match byte for byte, tasks 1035, ok 751, average delay 0.2025 s,
+  energy 11.5627 Wh, CPU 0.6342%. Because every observer only delegates, injecting
   the eight models changes no measurement.
 - The per-hook usage counts show which extension points the framework really calls
   in one run: the computing node hook fires 8053 times (every task event, status
   tick, and transfer on all 22 nodes), the network model 2070 times, the
-  orchestrator 665 times (fewer than the 1035 tasks because the manager caches a
-  placement per device, so the custom orchestrator sees only the first task of each
-  device), and the mobility model exactly 20 times, one path per mobile device.
+  orchestrator 291 times, far below the 1035 tasks because the manager caches a
+  placement per device and only asks the orchestrator again once the cached node has
+  moved out of range, which is 271 refreshes on top of the first call for each of
+  the 20 devices, and the mobility model exactly 20 times, one path per mobile
+  device.
 - The "first use" line is a sanity check, not a result: it names the class the
   framework chose, for example `1 cloud, 1 edge, 20 devices` from the nodes
   generator and 84 directed links from the topology creator, which is the wiring

@@ -59,21 +59,22 @@ PYTHONPATH=src python examples/softmax_orchestrator/softmax_orchestrator.py
 ## What to look for
 
 ```text
-softmax  tasks= 16870 ok= 3268 avg_delay=0.1756 cloud=7718 edge=6847 mist=2305 energy=79.4645
+softmax                  tasks= 16870 ok= 12306 avg_delay=0.1704   cloud= 2736 edge=11896 mist= 2238 failed(delay)= 4564 failed(mobility)=   0 energy=76.5122
 ```
 
-- The average delay of completed tasks, 0.1756 s, is the lowest of the four
-  policies measured on this scenario (ant colony 0.1776, multi-objective 0.1835,
-  priority 0.1859), but only 3268 of 16870 tasks succeed (13602 fail on delay):
-  the sampler keeps probing the congested cloud, so the successes are the quick
-  ones.
-- The CSV shows where they land. Mist completes 1768 of 2305 placements, edge
-  1215 of 6847, and cloud only 285 of 7718, so a low `TEMPERATURE` makes the
-  high-value mist and edge tiers win most draws while the cloud still absorbs the
-  overflow. This relative success rate, not the raw cloud count, is what the
-  Boltzmann sampling is buying.
-- Energy reaches 79.46 Wh and splits across the levels (edge 37.36, mist 34.87,
-  cloud 7.23): four data centers carrying tasks cost more than the single data
+- The average delay of completed tasks, 0.1704 s, is the second lowest of the four
+  policies measured on this scenario, behind the ant colony (0.1666) and ahead of
+  the priority rule (0.1809) and the multi-objective agent (0.185), and 12306 of
+  16870 tasks succeed (4564 fail on delay): with the corrected transfer model the
+  sampler no longer overloads the congested cloud, so the successes are no longer
+  only the quick ones.
+- The CSV shows where they land. Edge completes 9942 of 11896 placements (83.6%),
+  mist 1899 of 2238 (84.9%, the best rate), and cloud only 465 of 2736 (17.0%), so
+  a low `TEMPERATURE` makes the high-value edge and mist tiers win almost all the
+  draws while the cloud absorbs just the overflow it still gets. This relative
+  success rate, not the raw cloud count, is what the Boltzmann sampling is buying.
+- Energy reaches 76.51 Wh and splits across the levels (edge 38.15, mist 35.33,
+  cloud 3.03): four data centers carrying tasks cost more than the single data
   center of the Q-learning example.
 - Results go to `examples/softmax_orchestrator/output/`.
 

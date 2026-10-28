@@ -68,29 +68,33 @@ PYTHONPATH=src python examples/multi_objective/multi_objective.py
 ## What to look for
 
 ```text
-SCALARIZED_Q  devices= 300 tasks= 16870 ok= 4017 avg_delay=0.1835 cloud=7637 edge=5519 mist=3714 energy=78.7241
+SCALARIZED_Q             devices= 300 tasks= 16870 ok= 12367 avg_delay=0.185    cloud= 1870 edge=10994 mist= 4006 energy=73.2994
 ```
 
-- The energy table is what makes this run interesting, and it bites back. The
-  cloud has 200 cores, so its estimated compute time, and therefore its estimated
-  energy, is the smallest of the three tiers; with `ENERGY_WEIGHT` = 1.0 pulling
-  as hard as the delay term, the agent ships 7637 tasks to the cloud, second only
-  to the softmax run (7718) among the policies measured on this scenario, and far
-  above the priority rule (5891) and the ant colony (4098).
-- Only 375 of those 7637 cloud tasks succeed (4.9%). The reason is congestion:
-  the shared WAN logged 127223 s of usage on this run, several times the 36648 s
-  of the ant colony run, because every cloud placement pays a WAN transfer on the
-  20 Mbps uplink. The delay table alone would have kept the tasks near the edge,
-  but the equal weights let the energy table overrule it.
-- The promised energy saving does not show up. Despite being the "energy-aware"
-  policy, total energy is 78.72 Wh, above the ant colony (78.27) and the priority
-  rule (76.52) on the same scenario and only just below the softmax run (79.46),
-  because a task that fails after a long WAN transfer has already spent that
-  energy for nothing. The per-tier split still favors mist for wins: 2637 of 3714
-  mist tasks succeed (71%).
-- Average delay, 0.1835 s, is a hair worse than the ant colony's 0.1776, and the
-  success count, 4017, is between the ant colony (3855) and priority (4770).
-  Results go to `examples/multi_objective/output/`.
+- The energy table was meant to drag this run toward the cloud, but on the
+  corrected network it does not. The cloud still has 200 cores and the lowest
+  estimated compute energy, yet with `ENERGY_WEIGHT` = 1.0 no heavier than the
+  delay term the agent ships only 1870 tasks to the cloud, now the fewest of the
+  three learning policies on this scenario (softmax 2736, ant colony 2113), while
+  the edge carries the bulk (10994 placements).
+- The cloud is still the weak tier: only 135 of those 1870 tasks succeed (7.2%),
+  because every cloud placement pays a WAN transfer on the 20 Mbps uplink. With
+  the corrected model that transfer is no longer over-counted, so the shared WAN
+  logs just 179.67 s here, below the 649.92 s of the ant colony run, and the delay
+  table keeps the bulk of the traffic at the edge instead of letting the energy
+  table overrule it.
+- The promised energy saving now shows up. Total energy is 73.30 Wh, the second
+  lowest of the four policies on the same scenario, just above the priority rule
+  (72.60) and well below the softmax run (76.51) and the ant colony (77.67),
+  because the corrected model no longer charges a failed WAN transfer twice and
+  the load sits on the efficient edge. The per-tier split favors the edge and
+  mist for wins: 9292 of 10994 edge tasks (84.5%) and 2940 of 4006 mist tasks
+  (73.4%) succeed.
+- Average delay, 0.185 s, is now the highest of the four policies, behind the ant
+  colony's 0.1666 and the softmax run's 0.1704, while the success count, 12367,
+  is the best of the four, just ahead of the ant colony (12352), the softmax run
+  (12306) and the priority rule (12279). Results go to
+  `examples/multi_objective/output/`.
 
 This is a policy to tune rather than trust at the default weights: set
 `ENERGY_WEIGHT` to 0.1 (or drop `REFERENCE_ENERGY_WH`) to let the delay table

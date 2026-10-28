@@ -1,5 +1,45 @@
 # Changelog
 
+## Unreleased
+
+*   New `examples/trace_replay`, the Python mirror of Java `Example25`.
+    `TraceTaskGenerator` reads `trace/azure_llm_code_1h.csv`, the 8819 LLM
+    inference requests of the Azure dataset published with the Splitwise paper
+    (CC-BY-4.0, attributed in `trace/NOTICE.md`), and turns each line into one
+    request whose size, length and deadline come from the recorded prompt and
+    completion token counts. The same scenario runs with poisson arrivals at the
+    mean rate and mean sizes of the trace when `--synthetic` is passed. Both modes
+    use one 8-core edge server sized to the mean demand of the hour: the recorded
+    trace spends 120213 s in queues and 36.06 percent of its requests meet their
+    deadline, against 231 s and 100 percent for random arrivals, at 42.42 and
+    42.76 percent CPU utilization. The token-to-instruction mapping is
+    configurable through the `--bytes-per-token`, `--mi-per-context-token`,
+    `--mi-per-generated-token`, `--ttft-budget` and `--decode-budget` flags. The
+    replay draws no random value, so its counters are the Java ones: the same
+    8819 requests and the same 3180 successes.
+*   The static network model now finishes a transfer at its exact completion time,
+    the way the Java `NetworkLink` does, instead of clearing it at the next
+    `network_update_interval` poll. A one-hop transfer therefore advances the clock
+    by its propagation delay and not by up to a whole second, and every measured
+    latency in the port moves with it. The realistic model, which polls the link,
+    is unchanged.
+*   The last hop of the shared WAN, from the metro router to the cloud, is now an
+    `IGNORE` link, as in Java: it delays the tasks that cross it and moves no usage,
+    traffic or energy counter, because the device link that entered the WAN already
+    booked the same bits. Only the edge data center named `dc1` hangs on the WAN
+    router; the other data centers keep their MAN ring and reach the cloud through
+    it. Reported WAN usage and energy drop accordingly: on the ant colony scenario,
+    which uses the shared WAN, the WAN usage column goes from 5914 s to 650 s.
+*   Three result column headers now carry the Java wording: `Tasks successfully
+    executed (Cloud)`, `(Edge)` and `(Mist)`, replacing `Successful tasks executed`.
+    The positions and the values do not change.
+*   An example README refresh followed: all 26 example runs were re-measured with
+    the corrected model, and every committed console block and analytical sentence
+    now quotes the 2026-10-28 numbers.
+*   The test badge in the README is now the real coverage number: the workflow
+    writes a shields endpoint JSON from the pytest coverage report and commits it,
+    and the suite gates at 95 percent.
+
 ## Version 6.0.0 Changelog (October 27th 2026)
 
 *   The version number follows the Java simulator. Both now release 6.0, because

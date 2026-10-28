@@ -60,22 +60,51 @@ An optional device count and output folder shrink the run.
 ## What to look for
 
 ```text
+Event received by cloud 0, you can do any action here
+Event received by dc1, you can do any action here
+Event received by wifi device 3, you can do any action here
+Event received by wifi device 4, you can do any action here
+Event received by wifi device 5, you can do any action here
+Event received by wifi device 6, you can do any action here
+Event received by wifi device 7, you can do any action here
+Event received by wifi device 8, you can do any action here
+Event received by wifi device 9, you can do any action here
+Event received by wifi device 10, you can do any action here
+Event received by wifi device 11, you can do any action here
+Event received by wifi device 12, you can do any action here
+Event received by wifi device 13, you can do any action here
+Event received by wifi device 14, you can do any action here
+Event received by wifi device 15, you can do any action here
+Event received by wifi device 16, you can do any action here
+Event received by wifi device 17, you can do any action here
+Event received by wifi device 18, you can do any action here
+Event received by wifi device 19, you can do any action here
+Event received by wifi device 20, you can do any action here
+Event received by wifi device 21, you can do any action here
+Event received by wifi device 22, you can do any action here
+
 22 nodes received the custom event: cloud=1, edge_datacenter=1, edge_device=20
-custom_computing_node      tasks= 1035 ok=  285 avg_delay=0.1994   energy=11.6627  cpu=0.5838%
+custom_computing_node      tasks= 1035 ok=  751 avg_delay=0.2025   energy=11.5627  cpu=0.6342%
 ```
 
 - The 22 printed "Event received by" lines, one per node, and the counter split
   `cloud=1, edge_datacenter=1, edge_device=20`, show that the one registered class
   really built the entire fleet and that every node ran its own event exactly once.
-- Energy 11.6627 Wh and average CPU 0.5838% are the proof, not decoration. Every
+- Energy 11.5627 Wh and average CPU 0.6342% are the proof, not decoration. Every
   event the node does not own is forwarded to `super().process_event`, so the
   built-in energy accounting and the `UPDATE_STATUS` tick keep running. Drop that
   forwarding line and the status events stop, which silently corrupts these two
-  columns, so the unchanged energy is what confirms the subclass stayed honest.
-- The 0.1994 s average delay and 285 of 1035 tasks succeeding (27.5%) match the
-  stock scenario exactly, which is the intended result: the custom event is a
-  one-off that neither helped nor hurt the offloading, and the low success rate
-  belongs to the short 5 minute run, not to the subclass.
+  columns, so a run that still ends with a full energy bill split across the three
+  layers (edge data center 9.1641 Wh, device fleet 2.1181 Wh, cloud 0.2805 Wh) and a
+  populated CPU column is what confirms the subclass stayed honest.
+- The 0.2025 s average delay and 751 of 1035 tasks succeeding (72.6%) are plain
+  measurements of the offloading itself: the custom event fires once per node and
+  touches no task, so nothing in these numbers can be attributed to the subclass.
+  The placement follows the trade-off rule (463 tasks at the edge with 345 in
+  budget, 448 in the mist with 361, 124 on the cloud with only 45), and the 284
+  failures are all latency misses, 0 for mobility and 0 for dead devices; the six
+  battery powered devices of the twenty all finish above 99.5% of their charge, so
+  the remaining failures belong to the short 300 second run, not to the subclass.
 
 ## Files
 

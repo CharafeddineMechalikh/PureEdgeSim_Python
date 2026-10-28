@@ -68,26 +68,27 @@ PYTHONPATH=src python examples/ant_colony/ant_colony.py
 ## What to look for
 
 ```text
-ANT_COLONY  devices= 300 tasks= 16870 ok= 3855 avg_delay=0.1776 cloud=4098 edge=9313 mist=3459 energy=78.273
+ANT_COLONY               devices= 300 tasks= 16870 ok= 12352 avg_delay=0.1666   cloud= 2113 edge=12926 mist= 1831 energy=77.6697
 ```
 
-- The average delay of completed tasks, 0.1776 s, is the second best of the four
-  policies measured on this five minute scenario, behind the softmax run at
-  0.1756 s and ahead of the multi-objective agent (0.1835) and the priority rule
-  (0.1859), because the inverse-delay term in the sampling weight already pushes
-  early tasks toward the fastest tier before the trail has learned much.
-- The per-tier success rates are the counter-intuitive part. The colony sent the
-  most tasks to the edge (9313) yet only 720 of them met their latency budget
-  (7.7%): the 30000 MI HEAVY jobs pile onto the MEC hosts (edge CPU usage 9.94%,
-  the highest tier) and then miss their bound. The mist carried only 3459 tasks
-  but returned 2445 successes (70.7%), so the trail correctly ranks mist first
-  even though the raw counts rank edge first.
-- The cloud, the slowest tier on the shared WAN, got 4098 placements and 690
-  successes, and its pheromone stays at the `MIN_PHEROMONE` = 0.05 floor instead
-  of being cut off, which is exactly why it still receives a few exploratory
-  tasks.
-- Total energy is 78.27 Wh and sits in the edge (37.21 Wh) and the mobile fleet
-  (mist 34.24 Wh), not in cloud compute (6.82 Wh). Results go to
+- The average delay of completed tasks, 0.1666 s, is now the best of the four
+  policies measured on this five minute scenario, ahead of the softmax run
+  (0.1704), the priority rule (0.1809) and the multi-objective agent (0.185),
+  because the inverse-delay term in the sampling weight already pushes early
+  tasks toward the fastest tier before the trail has learned much.
+- The per-tier success rates now run in the same order as the raw counts. The
+  colony sent the most tasks to the edge (12926) and 10486 of them met their
+  latency budget (81.1%, the highest tier): the 30000 MI HEAVY jobs pile onto the
+  MEC hosts (edge CPU usage 15.61%, the highest tier) but, with the corrected
+  transfer model, most still clear their bound. The mist carried only 1831 tasks
+  and returned 1296 successes (70.8%), so the trail ranks the edge first, which
+  is the same order the raw counts give.
+- The cloud, the slowest tier on the shared WAN, got 2113 placements and 570
+  successes (27.0%), and its pheromone stays near the `MIN_PHEROMONE` = 0.05 floor
+  instead of being cut off, which is exactly why it still receives a few
+  exploratory tasks.
+- Total energy is 77.67 Wh and sits in the edge (38.22 Wh) and the mobile fleet
+  (mist 35.85 Wh), not in cloud compute (3.60 Wh). Results go to
   `examples/ant_colony/output/`.
 
 Tune `ALPHA` up to trust the trail more and the heuristic less, or raise

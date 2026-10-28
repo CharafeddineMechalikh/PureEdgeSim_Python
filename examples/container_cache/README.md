@@ -83,45 +83,56 @@ PYTHONPATH=src python examples/container_cache/container_cache.py
 
 ## What to look for
 
-The cached run opens with the cache report:
+The run prints a header line, then the cache report, then the three rows:
 
 ```text
-ContainerCache - container cache: 10334 hits, 6536 misses (61.26 % hit ratio), 804 evictions, 0 refused, 8.14 MB used of 372.00 MB
-cache         tasks= 16870 ok=  1770 success=10.49 % avg_delay=0.1599   wan_usage=488442.252   containers_lan=4153.4043 traffic_MB=51042.06   energy=77.5232
-cloud_always  tasks= 16870 ok=  1770 success=10.49 % avg_delay=0.1599   wan_usage=488143.868   containers_lan=13620.5818 traffic_MB=62212.0    energy=77.5232
-cloud         tasks= 16870 ok=  1770 success=10.49 % avg_delay=0.1599   wan_usage=488116.732   containers_lan=15.9179  traffic_MB=42542.22   energy=77.5232
+registry mode / container handling (same seed, same workload, same architecture)
+ContainerCache - container cache: 10492 hits, 6378 misses (62.19 % hit ratio), 1308 evictions, 0 refused, 8.12 MB used of 372.00 MB
+cache         tasks= 16870 ok=  1770 success=10.49 % avg_delay=0.1599   wan_usage=525137.076   containers_lan=0.0      traffic_MB=50294.24   energy=75.6774
+cloud_always  tasks= 16870 ok=  1684 success=9.98 % avg_delay=0.1599   wan_usage=733151.644   containers_lan=0.0      traffic_MB=62212.0    energy=75.6774
+cloud         tasks= 16870 ok=  1770 success=10.49 % avg_delay=0.1599   wan_usage=468487.352   containers_lan=0.0      traffic_MB=42505.72   energy=75.6774
 ```
 
-All three rows carry the same workload, so the only columns that move are the
-container traffic and the request makespan.
+All three rows carry the same workload and the same average execution delay, so the
+columns that move are the container traffic, the request makespan, the network
+energy, and, for the always-download baseline, the success count.
 
-| Container handling | Total traffic (MB) | Container LAN time (s) | Request makespan (s) |
+| Container handling | Total traffic (MB) | Container WAN time (s) | Request makespan (s) |
 | --- | --- | --- | --- |
-| LRU cache (`cache`) | 51042.06 | 4153.4043 | 5.9429 |
-| Download every request (`cloud_always`) | 62212.00 | 13620.5818 | 6.6051 |
-| Never evict (`cloud`) | 42542.22 | 15.9179 | 4.9429 |
+| LRU cache (`cache`) | 50294.24 | 178701.912 | 0.9976 |
+| Download every request (`cloud_always`) | 62212.00 | 445211.112 | 1.0463 |
+| Never evict (`cloud`) | 42505.72 | 391.024 | 1.0212 |
 
-- The cache turns 10334 of the 16870 requests into a hit, a 61.26 percent hit
-  ratio, and evicts 804 containers to stay inside the 3 MB budget. The 372 MB
+- The cache turns 10492 of the 16870 requests into a hit, a 62.19 percent hit
+  ratio, and evicts 1308 containers to stay inside the 3 MB budget. The 372 MB
   total capacity is 124 nodes times 3 MB, so nothing is refused (0 refused): the
   largest container, 2.2 MB, always fits on its own.
-- Against the download-every-request baseline the cache removes 17.95 percent of
-  the traffic (62212.0 down to 51042.06 MB) and 69.5 percent of the container
-  transfer time (13620.5818 down to 4153.4043 s). The never-evict baseline shows
-  the ceiling, 42542.22 MB, so the bounded cache captures most but not all of
+- Against the download-every-request baseline the cache removes 19.2 percent of
+  the traffic (62212.00 down to 50294.24 MB) and 59.9 percent of the container
+  transfer time (445211.112 down to 178701.912 s of WAN). The never-evict baseline
+  shows the ceiling, 42505.72 MB, so the bounded cache captures most but not all of
   the savings.
 - The honest cost: in this port the container download is charged to the request
-  makespan and the traffic, not to the task compute latency. So the three rows
-  report the identical average execution delay of 0.1599 s, the same 1770
-  successes out of 16870 (10.49 percent), and the same 77.5232 Wh. The cache
-  buys network volume and a faster request (makespan 6.6051 down to 5.9429, 10
-  percent), not a higher success rate.
-- The low 10.49 percent success is the scenario, not the cache: a cloud
-  orchestrator sends every hard real-time Health task over the 20 Mbps WAN
-  twice, which blows its 20 ms budget regardless of how the container is
-  handled. The WAN column (about 488000 s, mostly those orchestrator round
-  trips) barely moves across the three runs, confirming that container
-  downloads here travel over the MAN between the data centers.
+  makespan and the traffic, not to the task compute latency, so all three rows
+  report the identical average execution delay of 0.1599 s. What the download path
+  does change is the makespan and the success count. Against the always-download
+  baseline the cache shortens the request makespan from 1.0463 to 0.9976 s (4.7
+  percent) and lifts the success rate from 9.98 percent (1684 of 16870) to 10.49
+  percent (1770), because saturating the shared WAN with a download on every
+  request pushes the slowest tasks past their deadline. The computing-node energy
+  is the same 75.6774 Wh in all three rows; only the network column moves, the WAN
+  drawing 20.6285 Wh under always-download against 19.3917 Wh with the cache and
+  18.5834 Wh when nothing is evicted.
+- The low success rate is the scenario, not the cache: a cloud orchestrator sends
+  every hard real-time Health task over the 20 Mbps WAN twice, which blows its
+  20 ms budget regardless of how the container is handled. The WAN column, about
+  468000 to 733000 s, now tracks the container handling rather than staying flat,
+  because after the network model fix the registry pull travels the shared WAN (the
+  one edge data center, `dc1`, that hangs on the WAN router) and the container LAN
+  column reads 0.0 s in all three rows. Container downloads therefore book WAN time
+  and WAN energy, not the MAN between the data centers, which is why the
+  always-download row pays both the largest WAN time (733151.644 s) and the
+  smallest number of successes.
 
 Lower `CACHE_CAPACITY_MB` toward 1.5 to make the heavy 2.2 MB container
 refusable, or raise it above 3.7 to let every node hold all three and watch the

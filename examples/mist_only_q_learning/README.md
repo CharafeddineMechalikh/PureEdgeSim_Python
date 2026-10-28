@@ -59,19 +59,27 @@ PYTHONPATH=src python examples/mist_only_q_learning/mist_only_q_learning.py
 ## What to look for
 
 ```text
-mist only  tasks= 14500 ok= 6660 avg_delay=0.2388 cloud=0 edge=0 mist=14500 energy=42.6783
+mist only                tasks= 14500 ok= 11309 avg_delay=0.2539   cloud=    0 edge=    0 mist=14500 failed(delay)= 3191 failed(mobility)=   0 energy=48.5838
 ```
 
 - Every one of the 14500 tasks is placed on the mist (cloud and edge counts are
   exactly 0), which confirms the action space really collapsed to a single tier;
   the agent no longer chooses where to offload, it learns which peer is idle.
-- 6660 tasks succeed and 7840 fail on delay, for an average completed delay of
-  0.2388 s, higher than the tier-selecting runs: a fleet of phones, tablets and
-  laptops cannot drain a 30000 MI HEAVY_COMP_APP the way the cloud can, so the
-  price of keeping every request in the mist is a lower success rate.
-- Energy is 42.68 Wh, and the CSV shows the split: the mist layer carries the
-  compute at 33.82 Wh while the idle edge data center still draws 8.86 Wh even
-  though it runs nothing.
+- 11309 tasks succeed and 3191 fail on delay, for an average completed delay of
+  0.2539 s, higher than the tier-selecting runs (0.1742 s on the device with all
+  three tiers open, 0.1649 s with the orchestrator on the edge tier): a fleet of
+  phones, tablets and laptops cannot drain a 30000 MI HEAVY_COMP_APP the way the
+  cloud can. What the fresh numbers change is the shape of the price. Keeping every
+  request in the mist costs time, not success: 78.0% of the tasks clear their
+  latency bound here, against 74.4% for the tier-selecting run on the same agent,
+  because a request that never leaves the neighbourhood never queues behind the
+  shared WAN link either, and the CSV waiting-time column is 0.0 s for the whole
+  run. The 3191 failures are the stages a local peer cannot finish in time at all.
+- Energy is 48.58 Wh, and the CSV shows the split: the mist layer carries the
+  compute at 39.72 Wh while the idle edge data center still draws 8.86 Wh even
+  though it runs nothing; the cloud column is 0.00 Wh, and the separate per-link
+  accounting puts all 16.05 Wh of the network energy on peer-to-peer Wi-Fi, with
+  0.00 Wh on the WAN.
 - Results go to `examples/mist_only_q_learning/output/`.
 
 Widen or narrow `edge_devices_range` in `settings/` to change how many peers the

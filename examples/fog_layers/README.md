@@ -66,13 +66,13 @@ PYTHONPATH=src python examples/fog_layers/fog_layers.py
 The console ends with the layer summary and the result row:
 
 ```text
-FogLayersOrchestrator - placements per layer: Mist=12784, Edge=2
-FOG_LAYERS       devices= 300 tasks= 14515 ok=  1515 failed(delay)=13000 avg_delay=0.316    cloud=   0 edge=  30 mist=14485 energy=40.1415
+FogLayersOrchestrator - placements per layer: Mist=4129, Edge=2
+FOG_LAYERS       devices= 300 tasks= 14515 ok= 10502 failed(delay)= 4013 avg_delay=0.316    cloud=   0 edge=  30 mist=14485 energy=40.1415
 ```
 
 | Layer | Placement decisions | Tasks executed |
 | --- | --- | --- |
-| Mist (gateways) | 12784 | 14485 |
+| Mist (gateways) | 4129 | 14485 |
 | Edge (data center) | 2 | 30 |
 | Cloud | 0 | 0 |
 
@@ -83,14 +83,17 @@ FOG_LAYERS       devices= 300 tasks= 14515 ok=  1515 failed(delay)=13000 avg_del
 - The `pending` count is what makes the overflow happen. The 99 gateways carry
   396 cores in total against 201 sensors, so their queues build, and a sensor
   whose own neighbourhood is saturated is pushed to the edge rather than waiting.
-- The cost of filling the nearest layer first is latency. With seed 42 only 1515
-  of 14515 tasks succeed, 10.44 percent, and 13000 fail their latency budget,
-  while the average compute time stays at 0.316 s. The gateways are genuinely
-  busy, so a quarter-tier mist trades most of the soft real-time and hard
-  real-time traffic for staying close to the sensor.
+- The nearest layer now finishes most of its work in time. The old latency penalty
+  came from transfers being rounded up to the next one-second poll; with the exact
+  completion time, 10502 of 14515 tasks succeed with seed 42, 72.35 percent, and
+  only 4013 miss their latency budget while the average compute time stays at
+  0.316 s. A quarter-tier mist no longer trades away most of the soft real-time
+  and hard real-time traffic to stay close to the sensor.
 - The energy follows the placement: 31.257 Wh of the 40.1415 Wh total is drawn by
-  the mist fleet, only 8.8845 Wh by the idle edge server, and the WAN carries
-  0.0 s because nothing leaves the local network.
+  the mist fleet and only 8.8845 Wh by the idle edge server. The WAN carries 0.0 s
+  and the MAN 0.0 Wh, because every task stops at a gateway or the edge data
+  center and none climbs to the cloud, so the WAN gateway that `dc1` hangs on never
+  carries traffic; the whole 16.9721 Wh of network energy is Wi-Fi on the LAN.
 
 Raise the gateway share above 33 percent, or shrink `edge_devices_range`, to move
 the balance: more mist capacity lifts the success rate, a narrower range pushes

@@ -79,16 +79,16 @@ PYTHONPATH=src python examples/self_clustering/self_clustering.py
 The console ends with the two cluster reports and the result row:
 
 ```text
-ClusterOrchestrator - cluster placement: 9229 placements, head=29.3 %, member=44.9 %, local=25.8 %, outside=0.0 %
+ClusterOrchestrator - cluster placement: 3431 placements, head=34.1 %, member=1.5 %, local=64.3 %, outside=0.0 %
 ClusterOrchestrator - clustering: 11 clusters over 200 devices, 11 rounds, average size 18.2, largest 38
-CLUSTER_LOCAL    devices= 200 tasks= 14500 ok=  5215 failed(delay)= 9285 avg_delay=0.1437   cloud=   0 edge=   0 mist=14500 lan_usage=78.0974   traffic_MB=12411.18  energy=44.3096
+CLUSTER_LOCAL    devices= 200 tasks= 14500 ok= 11200 failed(delay)= 3300 avg_delay=0.1306   cloud=   0 edge=   0 mist=14500 lan_usage=83.6353   traffic_MB=13264.28  energy=45.1434
 ```
 
-| Placement kind | Share of the 9229 decisions |
+| Placement kind | Share of the 3431 decisions |
 | --- | --- |
-| head | 29.3 % |
-| member | 44.9 % |
-| local (the origin) | 25.8 % |
+| head | 34.1 % |
+| member | 1.5 % |
+| local (the origin) | 64.3 % |
 | outside the cluster | 0.0 % |
 
 - The election groups the map the way a 100 meter range on a 500 by 500 meter
@@ -98,23 +98,29 @@ CLUSTER_LOCAL    devices= 200 tasks= 14500 ok=  5215 failed(delay)= 9285 avg_del
 - The clustering is sound: 0.0 percent of placements fall outside the origin's
   cluster, so every task found a host among the head, its members, or the origin
   itself. A placement is an orchestration decision, so once an application lands
-  on a device its later tasks reuse that host, which is why 9229 decisions cover
+  on a device its later tasks reuse that host, which is why 3431 decisions cover
   the 14500 generated tasks, all of them executed on the mist (cloud and edge
   both zero).
-- The discount does its job: heads take 29.3 percent of placements, above the
-  25.8 percent that stay on the origin, and the remaining 44.9 percent go to
-  other members. At equal capacity the head wins, but the cost function still
-  charges radio time for a remote host, so a latency-sensitive Health task, with
-  only 20 ms to spend against 5 ms of Wi-Fi, is often kept local by the origin.
-- The trade-off is capacity. Running a `MIST_ONLY` policy means there is no edge
-  server to escape to, so only 5215 of 14500 tasks succeed, 35.97 percent, and
-  9285 miss their latency; the average compute time stays at 0.1437 s and the
-  average request makespan at 0.5755 s. The cost of staying inside the elected
-  neighbourhood is that a hot cluster has nowhere to overflow, which is exactly
-  what the head discount is meant to soften.
-- Self-organisation is also cheap on energy: 44.3096 Wh in total, 35.4484 Wh of
-  it from the mist devices, with 0 dead devices and 99.34 percent average
-  remaining battery after five minutes.
+- The origin now keeps most of the work: 64.3 percent of placements stay on the
+  device that generated the task, the elected head takes 34.1 percent, and only
+  1.5 percent go to the other members. The 25 percent discount makes the head the
+  strong second rather than the majority, because once a device has hosted an
+  application its later tasks reuse it, so the origin's count grows fastest of all.
+  The discount still bites where the cost is close: at equal capacity the head
+  wins, and the cost function charges radio time for a remote host, so a
+  latency-sensitive Health task, with only 20 ms to spend against 5 ms of Wi-Fi,
+  is kept local by its origin.
+- Even without an edge to escape to, the mist fleet now clears most of its work:
+  11200 of 14500 tasks succeed, 77.24 percent, and 3300 miss their latency budget;
+  the average compute time is 0.1306 s and the average request makespan 0.1694 s.
+  Transfers finishing at their exact completion time, rather than the next
+  one-second poll, lift a `MIST_ONLY` run that once looked hopeless. The residual
+  3300 failures are the hot clusters with nowhere to overflow, the case the head
+  discount is meant to soften.
+- Self-organisation is also cheap on energy: 45.1434 Wh in total, 36.2823 Wh of it
+  from the mist devices, with 0 dead devices and 99.34 percent average remaining
+  battery after five minutes. The 8.8611 Wh ascribed to the edge is the idle draw
+  of the one data center that `MIST_ONLY` never routes to.
 
 Set `HEAD_COST_FACTOR` to 1.0 to drop the discount and watch the head share
 fall, or change `CLUSTER_UPDATE_INTERVAL` to see how stale membership and

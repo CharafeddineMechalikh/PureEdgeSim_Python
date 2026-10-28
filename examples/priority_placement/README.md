@@ -67,29 +67,31 @@ PYTHONPATH=src python examples/priority_placement/priority_placement.py
 ## What to look for
 
 ```text
-PRIORITY_AWARE  devices= 300 tasks= 16870 ok= 4770 avg_delay=0.1859 cloud=5891 edge=5900 mist=5079 energy=76.5246
+PRIORITY_AWARE           devices= 300 tasks= 16870 ok= 12279 avg_delay=0.1809   cloud=   23 edge=13370 mist= 3477 energy=72.5979
 ```
 
-- This rule-based policy posts the best success count of the four adaptive
-  examples, 4770 of 16870 tasks (28%), and the lowest total energy, 76.52 Wh. The
-  latency-sensitive classes land where they can clear their budget: 3405 of 5079
-  mist tasks (67%) and 1365 of 5900 edge tasks (23%) succeed, which is what the
-  slack rule and the normalized-delay rule are designed to do.
-- The striking result is the cloud: 5891 tasks were placed there and 0 of them
-  succeeded. The non real-time energy rule treats the 200-core cloud as the
-  cheapest destination (its compute time, and so its estimated active energy, is
-  tiny), so it loads the cloud with the 30000 MI HEAVY jobs, but every one of
-  them misses its 300 s bound on the congested shared WAN (77083 s of WAN usage
-  this run). The estimate optimizes compute energy and never sees the transfer
-  cost it actually pays.
-- So the policy wins the two metrics you would judge it on, success rate and
-  energy, while quietly wasting an entire tier. Its average delay, 0.1859 s, is
-  also slightly worse than the ant colony's 0.1776, and that is expected: delay
-  is not this policy's objective for the bulk of the traffic. Results go to
+- This rule-based policy posts the lowest total energy of the four adaptive
+  examples, 72.60 Wh, but now the fewest successes, 12279 of 16870 tasks, just
+  behind the multi-objective agent (12367), the ant colony (12352) and the softmax
+  run (12306). The latency-sensitive classes land where they can clear their
+  budget: 2837 of 3477 mist tasks (81.6%, the highest tier) and 9442 of 13370 edge
+  tasks (70.6%) succeed, which is what the slack rule and the normalized-delay
+  rule are designed to do.
+- The cloud is now almost untouched: only 23 tasks were placed there and none
+  succeeded. The non real-time energy rule still treats the 200-core cloud as the
+  cheapest destination on paper (its compute time, and so its estimated active
+  energy, is tiny), but the bulk of the 30000 MI HEAVY jobs now stay on the edge
+  (13370 placements), so the shared WAN sees just 14.26 s of traffic this run
+  instead of the cloud-filling transfer the old numbers showed.
+- So the policy wins on energy but not on successes: it is the cheapest of the
+  four yet clears the fewest tasks, and with the corrected model it no longer
+  wastes the cloud tier, it simply leaves it idle. Its average delay, 0.1809 s, is
+  worse than the ant colony's 0.1666, and that is expected: delay is not this
+  policy's objective for the bulk of the traffic. Results go to
   `examples/priority_placement/output/`.
 
 Give the non real-time rule a transfer-aware estimate, or restrict the cloud
-placement, to stop the 0-of-5891 outcome.
+placement, to stop the 0-of-23 outcome.
 
 ## Files
 

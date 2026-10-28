@@ -79,30 +79,29 @@ The custom launch prints the four hooks firing:
 ```text
 TypeGuaranteeGenerator - Device type 4 declares 2.0 % of the fleet, a share that rounds to zero: one device reserved from type 1
 FullMeshTopologyCreator - Added 4 directed MAN links to complete the full mesh of 4 edge data centers
-AuditSimulationManager - audit: 446 succeeded, 1004 failed, 0 not sent (FAILED_DUE_TO_DELAY 1004)
-AuditSimulationManager - link usage: WAN 169.34 s, MAN 0.00 s, LAN 42.13 s, 0 transfers crossed a MAN link
+AuditSimulationManager - audit: 1248 succeeded, 202 failed, 0 not sent (FAILED_DUE_TO_DELAY 202)
+AuditSimulationManager - link usage: WAN 17.97 s, MAN 0.00 s, LAN 64.38 s, 0 transfers crossed a MAN link
 AuditSimulationManager - busiest instant: 20 tasks arrive together at t=60 s over 1450 generated tasks
 ```
 
 Both rows below are the `ALL / TRADE_OFF / 20 devices` scenario at five simulated
-minutes and seed 83, read from the two CSVs that one run of the script writes.
+minutes and seed 83, measured 2026-10-28 and read from the two CSVs that one run of
+the script writes. The stock and custom columns share the metrics the run prints for
+both passes.
 
 | Metric | Stock models | Custom models |
 | --- | --- | --- |
 | Device split over the four types | 8, 6, 6, 0 | 7, 6, 6, 1 |
 | Directed MAN links in the graph | 8 | 12 |
 | Number of generated tasks | 1450 | 1450 |
-| Tasks successfully executed | 452 (31.17 %) | 446 (30.76 %) |
-| Failed due to latency | 998 | 1004 |
-| Placed on cloud, edge, mist | 189, 633, 628 | 165, 691, 594 |
-| Succeeded on edge, on mist | 53, 399 | 15, 431 |
-| Average execution delay (s) | 0.3877 | 0.4484 |
-| Average request makespan (s) | 1.0574 | 1.212 |
-| Network usage, WAN, LAN (s) | 229.30, 206.49, 22.81 | 211.47, 169.34, 42.13 |
-| Average bandwidth per task (Mbps) | 509.1592 | 334.476 |
+| Tasks successfully executed | 1250 (86.21 %) | 1248 (86.07 %) |
+| Failed due to latency | 200 | 202 |
+| Average execution delay (s) | 0.1609 | 0.2075 |
+| Network usage, WAN (s) | 44.4508, 0.608 | 82.3452, 17.968 |
+| Total network traffic (MB) | 1694.02 | 1613.02 |
+| Average CPU usage (%) | 0.262 | 0.38 |
 | MAN energy consumption (Wh) | 0.0 | 0.0 |
-| Energy of computing nodes (Wh) | 38.7005 | 37.5392 |
-| Average CPU usage (%) | 0.8093 | 0.9901 |
+| Energy of computing nodes (Wh) | 39.0373 | 37.9788 |
 | Dead devices, device-death, mobility failures | 0, 0, 0 | 0, 0, 0 |
 
 - The reservation is exactly what it claims. The largest remainder method gives the
@@ -122,24 +121,25 @@ minutes and seed 83, read from the two CSVs that one run of the script writes.
   and a redundant route that a tier-hopping policy would use, not this one.
 - Synchronizing the fleet is a cost, not a win. The workload size is unchanged (1450
   tasks in both rows), but the custom burst puts the whole fleet of 20 devices at
-  t=60 s, so average bandwidth per task falls from 509.1592 to 334.476 Mbps as the
-  requests share the links at the same moment, and average request makespan rises
-  from 1.0574 to 1.212 s. Success is a little worse (452 against 446) and the average
-  execution delay of completed tasks is a little higher (0.4484 against 0.3877 s).
-  This is a context comparison, not a clean ablation: the reserved wearable replaces
-  a smartphone, and dropping the random arrival offset shifts the shared stream, so
-  several columns move at once.
+  t=60 s, so the requests share the links at the same moment and total network usage
+  almost doubles, from 44.4508 to 82.3452 s. Success is a shade worse (1250 against
+  1248) and the average execution delay of completed tasks is higher (0.2075 against
+  0.1609 s). This is a context comparison, not a clean ablation: the reserved wearable
+  replaces a smartphone, and dropping the random arrival offset shifts the shared
+  stream, so several columns move at once.
 - The audit reaches the real dispatch path and can be checked against the report. The
-  446 it prints equals `Tasks successfully executed` in the same CSV row, the single
-  reason `FAILED_DUE_TO_DELAY 1004` equals `Tasks failed (delay)`, and the `0 not
+  1248 it prints equals `Tasks successfully executed` in the same CSV row, the single
+  reason `FAILED_DUE_TO_DELAY 202` equals `Tasks failed (delay)`, and the `0 not
   sent` figure equals `Tasks not generated due to the death of devices`. Nothing dies
-  in this scenario: `Dead devices count`, `Tasks failed (device dead)` and
-  `Tasks failed (mobility)` are all 0, and the fleet ends at 99.39 percent (stock)
-  and 99.27 percent (custom) charge. Every failure is a deadline miss.
+  in this scenario: `Dead devices count` is 0 in both rows, and because generated
+  tasks equal successes plus latency failures in each (1250 + 200 = 1450 and
+  1248 + 202 = 1450), there is no room for device-death or mobility failures, so
+  those columns are 0 too. The custom fleet ends at 99.21 percent charge. Every
+  failure is a deadline miss.
 - No queue forms. `Average waiting time (s)` is 0.0 in both rows, because
   `realistic_network_model` = false lets each transfer take the whole link in one
-  step: the synchronized arrivals contend for bandwidth (hence the lower per-task
-  rate) but never wait behind one another.
+  step: the synchronized arrivals contend for the same links but never wait behind
+  one another.
 
 Results go to `examples/custom_models/output/`. The settings clear the output folder
 before a launch, so the two runs write to separate folders: the custom row owns a

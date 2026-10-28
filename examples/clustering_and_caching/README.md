@@ -91,54 +91,64 @@ rows, the cached one and the registry baseline:
 
 ```text
 Clustering - 9 cluster heads over 300 devices, 582 tree links wired, average size 33.3, largest 76
-CooperativeCache - cooperative cache: 26 WAN pulls, 679 cluster pulls (96.3 % served locally), 22 head hits, 26 distinct replicas over 9 heads
-CACHE cluster      tasks= 182700 ok=   9180 wan_usage=4.8533      container_wan=4.8533     container_lan=40.7008   traffic_MB=168571.39 avg_delay=0.1445   energy=419.7236
-CLOUD cluster      tasks= 182700 ok=   9180 wan_usage=314.544     container_wan=314.544    container_lan=0.0       traffic_MB=168841.13 avg_delay=0.1445   energy=419.5126
-saving - WAN usage: 309.6907 s avoided out of 314.5440 s in the registry run
+CooperativeCache - cooperative cache: 27 WAN pulls, 478 cluster pulls (94.7 % served locally), 14 head hits, 27 distinct replicas over 9 heads
+CACHE cluster      tasks= 182700 ok=  92239 wan_usage=1.4603      container_wan=1.4603     container_lan=1.6774    traffic_MB=164291.71 avg_delay=0.1787   energy=418.1513
+Clustering - 9 cluster heads over 300 devices, 582 tree links wired, average size 33.3, largest 76
+CLOUD cluster      tasks= 182700 ok=  93731 wan_usage=29.464      container_wan=29.464     container_lan=0.0       traffic_MB=148331.12 avg_delay=0.1906   energy=402.375
+saving - WAN usage: 28.0037 s avoided out of 29.4640 s in the registry run
 ```
 
 The same numbers read back from the CSV (`Wan usage (s)`, `Containers wan usage (s)`,
 `Containers lan usage (s)`, `Total network traffic (MBytes)` and
-`WAN energy consumption (Wh)`) are:
+`WAN energy consumption (Wh)`, measured 2026-10-28) are:
 
 | Row | Wan usage | Containers wan | Containers lan | Traffic (MB) | WAN energy (Wh) |
 | --- | --- | --- | --- | --- | --- |
-| CACHE cluster (cooperative) | 4.8533 s | 4.8533 s | 40.7008 s | 168571.39 | 0.0065 |
-| CLOUD cluster (registry) | 314.5440 s | 314.5440 s | 0.0000 s | 168841.13 | 0.1525 |
+| CACHE cluster (cooperative) | 1.4603 s | 1.4603 s | 1.6774 s | 164291.71 | 2.2425 |
+| CLOUD cluster (registry) | 29.4640 s | 29.4640 s | 0.0000 s | 148331.12 | 43.4131 |
 
 - What the clustering changed in the placement. The 300 devices collapse into 9
   heads with 582 tree links, the largest cluster holding 76 devices and the average
   holding 33.3. Because `deploy_orchestrator=CLUSTER` now finds a real head in
   `nodes_generator.orchestrators`, `_select_orchestrator` returns the cluster head
   instead of the cloud registry. In MIST_ONLY every task still lands on a mist node
-  (`Total tasks executed (Mist) = 87584`, `Total tasks executed (Cloud) = 0` on both
-  rows) so clustering does not move the tasks themselves. It moves the control
-  traffic: in the cached row, `Wan usage` equals `Containers wan usage` (both
-  4.8533 s), which means the WAN carries container traffic and nothing else. Every
-  request and every result returned to the source device stays inside the cluster,
-  over the LAN, on the 582 tree links the topology creator wired.
-- What caching saved. 679 of 705 container downloads (96.3 %) were served locally
-  and 22 more were free because the destination was the head and already held the
-  replica; 26 were cold applications that had to cross the WAN, one per
+  (`Total tasks executed (Cloud) = 0` and `Total tasks executed (Edge) = 0` on both
+  rows; the cached row runs 92740 tasks on mist, the registry row 94667) so
+  clustering does not move the tasks themselves. It moves the control traffic: in
+  the cached row, `Wan usage` equals `Containers wan usage` (both 1.4603 s), which
+  means the WAN carries container traffic and nothing else. Every request and every
+  result returned to the source device stays inside the cluster, over the LAN, on
+  the 582 tree links the topology creator wired.
+- What caching saved. 478 of 505 container downloads (94.7 percent) were served
+  locally and 14 more were free because the destination was the head and already
+  held the replica; 27 were cold applications that had to cross the WAN, one per
   application per cluster, which is exactly what a cooperative cache should cost.
-  The registry baseline pays 314.5440 s of WAN for those same 705 downloads, so
-  the cooperative cache removes 309.6907 s (98.46 %) of WAN time and shifts 40.7008 s
-  of that traffic to the LAN. The WAN energy column tracks it: 0.1525 Wh in the
-  registry run versus 0.0065 Wh in the cooperative one, the same 23.5-times
-  reduction the paper argues for.
-- What did not change, and why that matters. `Average execution delay` (0.1445 s),
-  `Tasks successfully executed` (9180) and `Tasks failed (delay)` (78404) are the
-  same on both rows. In this scenario only about 5 % of tasks clear their tight
-  `max_latency`, and the container download sits in the shadow of the queue and the
-  execution, so the caching effect is measured in the WAN columns, not in the
-  success or the delay. A cache that "made no task faster" but cut the WAN bill by
-  98 % is the outcome the HPCS paper reports, and the one this example reproduces.
+  The registry baseline pays 29.4640 s of WAN for the same pulls, so the cooperative
+  cache removes 28.0037 s (95.04 percent) of WAN time and shifts 1.6774 s of that
+  traffic to the LAN. The WAN energy column tracks it: 43.4131 Wh in the registry
+  run versus 2.2425 Wh in the cooperative one, a 19.4-times reduction, the kind of
+  saving the paper argues for.
+- What changed, and why the small success gap is not the cache's doing. Under the
+  corrected network model the two rows no longer land on identical task counts.
+  `Average execution delay` is 0.1787 s in the cached run against 0.1906 s in the
+  registry run, while `Tasks successfully executed` is 92239 against 93731, and
+  latency misses are tiny on both sides (501 against 936). What actually separates
+  the runs is `Tasks failed (mobility)`, 89960 against 88033: about half the
+  workload clears its `max_latency` now (92239 and 93731 of 182700, roughly 50
+  percent, not the few percent a one-second poll used to imply), so it is a mobile
+  device leaving `edge_devices_range`, not the container download, that dominates
+  the failures. The cache earns its saving in the WAN and WAN-energy columns, and
+  barely moves task outcomes, which stay a placement and mobility effect rather than
+  a caching one.
 - A smaller run makes the same effect visible in a second:
   `python examples/clustering_and_caching/clustering_and_caching.py 30 180 11`
-  clusters 30 devices into 13 heads, gives 14 cluster pulls against 19 WAN pulls,
-  moves container_wan from 3.6309 s to 1.5893 s, and turns the failure rate around
-  because at that scale the container download does sit on the task's critical
-  path.
+  clusters 30 devices into 13 heads (34 tree links), gives 9 cluster pulls against
+  18 WAN pulls (25 percent served locally), and cuts container_wan from 2.1632 s in
+  the registry run to 1.3067 s, saving 0.8565 s of WAN. At that scale the cache does
+  change task outcomes, but not kindly: the cooperative run finishes 791 tasks
+  against 786 in the registry run (mist success rate 91.9 percent versus 91.3
+  percent) while its average execution delay rises from 0.1216 to 0.169 s, because
+  serving a pull from a head adds a LAN hop the registry's single WAN pull does not.
 
 ## Files
 

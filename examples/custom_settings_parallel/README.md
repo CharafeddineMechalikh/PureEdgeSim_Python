@@ -74,59 +74,62 @@ The console prints one line per scenario for each pass, then the wall time and t
 verdict:
 
 ```text
-sequential  MIST_AND_EDGE  ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1013 avg_delay=0.648    energy=47.4033
-sequential  MIST_AND_EDGE  TRADE_OFF    devices= 100 tasks= 10150 ok= 1014 avg_delay=0.4804   energy=47.517
-sequential  ALL            ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1015 avg_delay=0.5973   energy=47.7725
-sequential  ALL            TRADE_OFF    devices= 100 tasks= 10150 ok= 1014 avg_delay=0.5447   energy=48.9727
+settings folder: D:\Charef\doctorat\Work folder\PyEdgeSim\PureEdgeSim\examples\custom_settings_parallel\settings
+
+sequential  MIST_AND_EDGE  ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1013 avg_delay=0.6084   energy=47.4811
+sequential  MIST_AND_EDGE  TRADE_OFF    devices= 100 tasks= 10150 ok= 1014 avg_delay=0.465    energy=47.8248
+sequential  ALL            ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1015 avg_delay=0.5916   energy=47.6758
+sequential  ALL            TRADE_OFF    devices= 100 tasks= 10150 ok= 1016 avg_delay=0.5287   energy=49.1103
 sequential  CLOUD_ONLY     ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1015 avg_delay=0.1575   energy=58.8768
 sequential  CLOUD_ONLY     TRADE_OFF    devices= 100 tasks= 10150 ok= 1015 avg_delay=0.1576   energy=58.5877
-sequential  6 scenario(s) in 31.64 s wall time
+sequential  6 scenario(s) in 23.06 s wall time
 
-parallel    MIST_AND_EDGE  ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1013 avg_delay=0.648    energy=47.4033
-parallel    MIST_AND_EDGE  TRADE_OFF    devices= 100 tasks= 10150 ok= 1014 avg_delay=0.4804   energy=47.517
-parallel    ALL            ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1015 avg_delay=0.5973   energy=47.7725
-parallel    ALL            TRADE_OFF    devices= 100 tasks= 10150 ok= 1014 avg_delay=0.5447   energy=48.9727
+parallel    MIST_AND_EDGE  ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1013 avg_delay=0.6084   energy=47.4811
+parallel    MIST_AND_EDGE  TRADE_OFF    devices= 100 tasks= 10150 ok= 1014 avg_delay=0.465    energy=47.8248
+parallel    ALL            ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1015 avg_delay=0.5916   energy=47.6758
+parallel    ALL            TRADE_OFF    devices= 100 tasks= 10150 ok= 1016 avg_delay=0.5287   energy=49.1103
 parallel    CLOUD_ONLY     ROUND_ROBIN  devices= 100 tasks= 10150 ok= 1015 avg_delay=0.1575   energy=58.8768
 parallel    CLOUD_ONLY     TRADE_OFF    devices= 100 tasks= 10150 ok= 1015 avg_delay=0.1576   energy=58.5877
-parallel    6 scenario(s) in 13.80 s wall time
+parallel    6 scenario(s) in 10.24 s wall time
 
 the two sweeps produced 6 rows each, identical: True
 ```
 
 ## Measured run
 
-The six rows of `output/<timestamp>/Parallel_simulation.csv`, seed 42, 100 devices,
-10 simulated minutes each. The sequential CSV holds the same numbers.
+The six rows of `output/<timestamp>/Parallel_simulation.csv`, measured 2026-10-28
+on seed 42, 100 devices, 10 simulated minutes each. The sequential CSV holds the
+same numbers.
 
 | Architecture | Algorithm | Tasks | Successful | Avg delay | WAN time | Request makespan | Energy |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| MIST_AND_EDGE | ROUND_ROBIN | 10150 | 1013 | 0.648 s | 0.9384 s | 4.2261 s | 47.4033 Wh |
-| MIST_AND_EDGE | TRADE_OFF | 10150 | 1014 | 0.4804 s | 0.9866 s | 3.108 s | 47.517 Wh |
-| ALL | ROUND_ROBIN | 10150 | 1015 | 0.5973 s | 8.787 s | 3.4094 s | 47.7725 Wh |
-| ALL | TRADE_OFF | 10150 | 1014 | 0.5447 s | 6.1786 s | 3.6248 s | 48.9727 Wh |
-| CLOUD_ONLY | ROUND_ROBIN | 10150 | 1015 | 0.1575 s | 102.6963 s | 2.0 s | 58.8768 Wh |
-| CLOUD_ONLY | TRADE_OFF | 10150 | 1015 | 0.1576 s | 102.6389 s | 2.0 s | 58.5877 Wh |
+| MIST_AND_EDGE | ROUND_ROBIN | 10150 | 1013 | 0.6084 s | 5.7086 s | 4.4269 s | 47.4811 Wh |
+| MIST_AND_EDGE | TRADE_OFF | 10150 | 1014 | 0.465 s | 6.7925 s | 3.4962 s | 47.8248 Wh |
+| ALL | ROUND_ROBIN | 10150 | 1015 | 0.5916 s | 15.3839 s | 3.8451 s | 47.6758 Wh |
+| ALL | TRADE_OFF | 10150 | 1016 | 0.5287 s | 30.9079 s | 4.1262 s | 49.1103 Wh |
+| CLOUD_ONLY | ROUND_ROBIN | 10150 | 1015 | 0.1575 s | 563.4337 s | 2.87 s | 58.8768 Wh |
+| CLOUD_ONLY | TRADE_OFF | 10150 | 1015 | 0.1576 s | 498.8261 s | 2.87 s | 58.5877 Wh |
 
 Reading the sweep:
 
 - The two passes agree exactly. Six rows, 56 columns each, identical between the
   sequential and the parallel CSV, which is what the seed per scenario buys. The
-  parallel pass took 13.80 s against 31.64 s sequential on six scenarios, about
-  2.3 times faster with six workers rather than six, because the pool also pays
+  parallel pass took 10.24 s against 23.06 s sequential on six scenarios, about
+  2.25 times faster with six workers rather than six, because the pool also pays
   process startup.
 - Only 10 percent of the workload meets its deadline in any scenario: 1013 to
-  1015 of 10150 tasks, and the same number of the roughly 9980 requests. That is a
+  1016 of 10150 tasks, and the same number of the roughly 9980 requests. That is a
   property of the ten minute burst against these deadlines, not of the
   architecture, and it is why the rows differ on delay and energy rather than on
   throughput.
-- The architecture is where the WAN time goes: 0.94 to 0.99 s with
-  `MIST_AND_EDGE`, 6.18 to 8.79 s with `ALL`, 102.64 to 102.70 s with `CLOUD_ONLY`.
-  Energy moves the other way, 47.40 to 47.52 Wh at the edge, 47.77 to 48.97 Wh with
-  all three tiers, 58.59 to 58.88 Wh in the cloud: the cloud tier is faster per
-  task, 0.1575 s against 0.4804 s, and costs 23 percent more energy.
+- The architecture is where the WAN time goes: 5.71 to 6.79 s with
+  `MIST_AND_EDGE`, 15.38 to 30.91 s with `ALL`, 498.83 to 563.43 s with
+  `CLOUD_ONLY`. Energy moves the other way, 47.48 to 47.82 Wh at the edge, 47.68 to
+  49.11 Wh with all three tiers, 58.59 to 58.88 Wh in the cloud: the cloud tier is
+  faster per task, 0.1575 s against 0.465 s, and costs 23 percent more energy.
 - `TRADE_OFF` beats `ROUND_ROBIN` on latency only where there is a choice to make.
-  On `MIST_AND_EDGE` it cuts the average delay from 0.648 to 0.4804 s and the
-  request makespan from 4.2261 to 3.108 s; on `CLOUD_ONLY` the two algorithms
+  On `MIST_AND_EDGE` it cuts the average delay from 0.6084 to 0.465 s and the
+  request makespan from 4.4269 to 3.4962 s; on `CLOUD_ONLY` the two algorithms
   cannot differ, 0.1575 against 0.1576 s, because there is exactly one destination
   for every task.
 - Parallel mode is not free of side effects, and the run shows them: live charts

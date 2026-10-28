@@ -3,6 +3,7 @@
 <p align="center">
   <a href="https://github.com/CharafeddineMechalikh/PureEdgeSim"><img src="https://img.shields.io/badge/Java%20version-PureEdgeSim-blue?logo=openjdk" alt="PureEdgeSim, the Java version"></a>
   <a href="https://github.com/CharafeddineMechalikh/PureEdgeSim_Python/actions/workflows/tests.yml"><img src="https://github.com/CharafeddineMechalikh/PureEdgeSim_Python/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/CharafeddineMechalikh/PureEdgeSim_Python/actions/workflows/tests.yml"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/CharafeddineMechalikh/PureEdgeSim_Python/main/.github/badges/coverage.json" alt="Test coverage"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="GPL v3 license"></a>
   <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational" alt="Python 3.10 to 3.13">
 </p>
@@ -49,11 +50,11 @@ pureedgesim run --settings examples/default_settings --devices 50 --duration 10 
 ```
 
 ```text
-Ran 6 scenario(s), results in output\2026-10-27_15-27-55
-  MIST_AND_EDGE  TRADE_OFF        50 tasks=  5330 ok=  1226 avg_delay=0.197 energy=30.977
-  MIST_AND_EDGE  ROUND_ROBIN      50 tasks=  5330 ok=  1231 avg_delay=0.2101 energy=31.0616
-  ALL            TRADE_OFF        50 tasks=  5330 ok=  1229 avg_delay=0.2274 energy=31.8876
-  ALL            ROUND_ROBIN      50 tasks=  5330 ok=  1829 avg_delay=0.2074 energy=31.139
+Ran 6 scenario(s), results in output\2026-10-28_16-06-05
+  MIST_AND_EDGE  TRADE_OFF        50 tasks=  5330 ok=  4056 avg_delay=0.1801 energy=31.2369
+  MIST_AND_EDGE  ROUND_ROBIN      50 tasks=  5330 ok=  4087 avg_delay=0.2059 energy=31.0528
+  ALL            TRADE_OFF        50 tasks=  5330 ok=  4015 avg_delay=0.2256 energy=31.5172
+  ALL            ROUND_ROBIN      50 tasks=  5330 ok=  4185 avg_delay=0.2062 energy=30.9939
   CLOUD_ONLY     TRADE_OFF        50 tasks=  5330 ok=   630 avg_delay=0.1693 energy=36.4156
   CLOUD_ONLY     ROUND_ROBIN      50 tasks=  5330 ok=   630 avg_delay=0.1693 energy=36.4156
 ```
@@ -125,8 +126,8 @@ Every runnable example has its own folder and README, indexed in
 every task on the node closest to its device instead of balancing the load:
 
 ```text
-TRADE_OFF (default)      tasks= 1035 ok=  775 avg_delay=0.2024   cloud= 135 edge= 436 mist= 464 energy=11.6066
-nearest node             tasks= 1035 ok=  781 avg_delay=0.2037   cloud=   0 edge= 522 mist= 513 energy=11.4243
+TRADE_OFF (default)      tasks= 1035 ok=  751 avg_delay=0.2025   cloud= 124 edge= 463 mist= 448 energy=11.5627
+nearest node             tasks= 1035 ok=  735 avg_delay=0.2037   cloud=   0 edge= 522 mist= 513 energy=11.4244
 ```
 
 [`examples/distributions_and_mobility/`](examples/distributions_and_mobility/README.md)
@@ -134,8 +135,8 @@ replaces the constants of the settings files by probability distributions and
 lets the devices move with the Gauss-Markov model:
 
 ```text
-constants, static      tasks= 1035 ok=  775 delay=0.2024   failed(delay)= 260 failed(mobility)=   0 energy=11.6066
-distributions, mobile  tasks= 1006 ok=  793 delay=0.2132   failed(delay)= 213 failed(mobility)=   0 energy=10.9223
+constants, static      tasks= 1035 ok=  751 delay=0.2025   failed(delay)= 284 failed(mobility)=   0 energy=11.5627
+distributions, mobile  tasks= 1006 ok=  792 delay=0.2132   failed(delay)= 214 failed(mobility)=   0 energy=10.6488
 ```
 
 [`examples/graph_partitioning/`](examples/graph_partitioning/README.md) and
@@ -158,12 +159,23 @@ GraphPartitioningOrchestrator - Application 0 (Soft Real-time): 3 partitions, cu
   P0.0 ['detect'] (4000 MI)
   P0.1 ['classify'] (2500 MI)
   P0.2 ['capture', 'preprocess', 'track', 'aggregate', 'notify'] (1950 MI)
-tasks= 9600 ok= 9600 avg_delay=0.024    cloud=3537 edge=4350 mist=1713 failed(dependency)=   0 energy=49.3512
+tasks= 9600 ok= 9600 avg_delay=0.024    cloud=3537 edge=4349 mist=1714 failed(dependency)=   0 energy=47.9631
 
 GeneticOrchestrator - Application 0 (Soft Real-time): fitness 0.0768 (makespan 0.0697 s, transfers 0.0011 s, imbalance 0.6244)
   {'capture': 'Mist#65', 'preprocess': 'Mist#65', 'detect': 'Mist#64', 'classify': 'Mist#54', 'track': 'Edge#2', 'aggregate': 'Mist#54', 'notify': 'Mist#54'}
-tasks= 9600 ok= 9600 avg_delay=0.0252 cloud= 984 edge=5861 mist=2755 failed(dependency)=   0 energy=49.2382
+tasks= 9600 ok= 9600 avg_delay=0.0252   cloud= 987 edge=5852 mist=2761 failed(dependency)=   0 energy=47.8312
 ```
+
+A task generator returns its whole task list before the first event is scheduled, so a
+scenario can read a recorded workload instead of sampling it.
+[`examples/trace_replay/`](examples/trace_replay/README.md) replays the 8819 LLM
+inference requests of a published production trace (the Azure dataset of the Splitwise
+paper, CC-BY-4.0) on a server sized to the mean demand of that hour, and compares the
+replay with random arrivals at the same mean rate and mean task sizes: the two runs
+report almost the same CPU utilization, 42.42 and 42.76 percent, while the recorded one
+spends 120213 s in queues against 231 s and meets its deadlines for 36.06 percent of
+its requests against 100 percent. Because the replay draws nothing, its numbers are the
+Java ones: the same 8819 requests and the same 3180 successes.
 
 ## Settings folder
 
@@ -291,7 +303,7 @@ the element, and the cause; nothing is silently skipped.
 
 ```bash
 pip install -e .[test]
-pytest              # 491 tests, the core, the settings readers, the CLI, and the examples
+pytest              # 509 tests, the core, the settings readers, the CLI, and the examples
 ```
 
 The integration tests build real managers and run them to the end, so the counters

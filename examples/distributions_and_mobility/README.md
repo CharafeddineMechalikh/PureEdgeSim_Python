@@ -65,18 +65,20 @@ python examples/distributions_and_mobility/distributions_and_mobility.py
 ## What to look for
 
 ```text
-constants, static      tasks= 1035 ok=  285 delay=0.1994   failed(delay)= 750 failed(mobility)=   0 energy=11.6627
-distributions, mobile  tasks= 1006 ok=  576 delay=0.2129   failed(delay)= 430 failed(mobility)=   0 energy=10.9468
+HEAVY_COMP_APP: every task draws 30000 MI, 2500 KB, gaps of 11.1 s
+draws from the lognormal task length: 38135, 18575, 18459, 33461, 38118, 20595
+constants, static      tasks= 1035 ok=  751 delay=0.2025   failed(delay)= 284 failed(mobility)=   0 energy=11.5627
+distributions, mobile  tasks= 1006 ok=  792 delay=0.2132   failed(delay)= 214 failed(mobility)=   0 energy=10.6488
 ```
 
 - The task count changes (1035 to 1006): the exponential gaps produce a different
   number of requests in the same simulated time.
-- Fewer tasks miss their deadline in the second run (750 to 430), so 576 succeed
-  against 285, even though the mean delay is higher (0.1994 s to 0.2129 s),
+- Fewer tasks miss their deadline in the second run (284 to 214), so 792 succeed
+  against 751, even though the mean delay is higher (0.2025 s to 0.2132 s),
   because the lognormal mix includes many short tasks: the average is dragged up
   by the long draws while the short ones clear their budget. The per-tier columns
-  show where the gain is, the mist tier returns 447 successes out of 457
-  placements in the distributed run against 195 out of 448 in the constant one.
+  show where the gain is, the mist tier returns 507 successes out of 510
+  placements in the distributed run against 361 out of 448 in the constant one.
 - `failed(mobility)` stays at zero in both rows: moving devices leave and re-enter
   range, but they are not lost, so mobility changes the destination, not the
   outcome.

@@ -66,21 +66,29 @@ PYTHONPATH=src python examples/q_learning/q_learning.py
 ## What to look for
 
 ```text
-TRADE_OFF   tasks= 5550 ok= 1190 avg_delay=0.2092 cloud=1410 edge=1575 mist=2565 energy=23.7768
-Q_LEARNING  tasks= 5550 ok= 1181 avg_delay=0.1841 cloud=3461 edge=1004 mist=1085 energy=25.2232
+orchestration strategy, same seed and same workload:
+TRADE_OFF                tasks=  5550 ok=  4173 avg_delay=0.1997   cloud=  467 edge= 2656 mist= 2427 failed(delay)= 1377 failed(mobility)=   0 energy=23.3791
+Q_LEARNING               tasks=  5550 ok=  4128 avg_delay=0.1742   cloud=  859 edge= 3263 mist= 1428 failed(delay)= 1422 failed(mobility)=   0 energy=24.0632
 ```
 
-- The average delay of completed tasks drops to 0.1841 from 0.2092, but the
-  success count barely moves and is a little worse (1181 against 1190): the
-  learner trades a handful of successes for faster completions, so report it as a
-  trade-off rather than a win.
-- The CSV explains the shift: Q-learning placed 3461 tasks on the cloud yet only
-  150 succeeded there, because 4369 tasks blew their latency budget on the shared
-  WAN link. Most real successes came from the mist (671 of 1085) and the edge
-  (360 of 1004), so the value table drives tasks to the tier that drains fastest.
-- Energy rises to 25.22 Wh, and the per-level split (mist 11.70, edge 10.14,
-  cloud 3.38) shows the cost sits in the mobile fleet and the data center idle
-  draw, not in the cloud compute.
+- The average delay of completed tasks drops to 0.1742 from 0.1997, while the
+  success count barely moves and is a little worse (4128 against 4173): the
+  learner trades 45 successes for faster completions, so report it as a trade-off
+  rather than a win.
+- The CSV explains the shift: the learned table sends most work to the edge tier,
+  3263 tasks, against 1428 in the mist and 859 on the cloud. The edge and the mist
+  are where it pays, 2771 successes at the edge (84.9%) and 1237 in the mist (86.6%);
+  the cloud is the one placement the learner still gets wrong, only 120 of its 859
+  tasks finish inside the budget (14.0%). The 1422 delay failures split as 739 in
+  the cloud, 492 at the edge and 191 in the mist, so the value table drives tasks to
+  the tier with the biggest CPU pool and the shortest hop, not to the tier that
+  drains the battery fastest: nothing is lost to a dead device and the fleet still
+  holds 99.71% of its charge after the five simulated minutes.
+- Energy rises to 24.06 Wh against 23.38 Wh for the same workload under
+  `TRADE_OFF`, and the per-tier split (mist 11.96, edge 11.31, cloud 0.80) shows
+  the cost sits in the mobile fleet and in the edge data center that serves it,
+  not in the cloud compute; the network columns point the same way, 4.12 Wh on the
+  LAN against 0.27 Wh on the WAN.
 - Results go to `examples/q_learning/output/`. The settings clear the output
   folder before each launch, so the CSV on disk keeps only the learned row; the
   `TRADE_OFF` line above is printed by the first launch of the same run.
