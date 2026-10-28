@@ -1,7 +1,7 @@
 """The four custom models of ``examples/custom_models``, checked on a shrunk run.
 
 The example makes four claims, and each is tested on a real launch of the shipped
-scenario (six devices, two simulated minutes, seed 11):
+scenario (twelve devices, one simulated minute, seed 11):
 
 * ``TypeGuaranteeGenerator`` reserves the 2 percent device type that the default
   largest-remainder split rounds down to zero devices.
@@ -27,11 +27,11 @@ from examples.custom_models import custom_models as models
 from pureedgesim import (COLUMNS, ComputingNodesGenerator, Engine, LinkType, Randomness, Scenario,
                          SimulationManager, load_parameters, load_settings)
 
-# Six devices over two minutes is the smallest scenario that still generates a
-# burst for every application, reserves a whole device type and keeps the run fast.
-SHORT_DURATION = 120.0
+# Twelve devices over one minute is the smallest scenario that still saturates a
+# tier, so the burst has something to break and the two runs part company.
+SHORT_DURATION = 60.0
 SEED = 11
-DEVICES = 6
+DEVICES = 12
 
 # The four types declared by settings/edge_devices.xml, in order.
 SHARES = [39.0, 29.0, 30.0, 2.0]
@@ -102,13 +102,13 @@ def rows(tmp_path_factory):
 # ------------------------------------------------------------------- the fleet hook
 
 def test_the_default_split_drops_the_rare_device_type():
-    assert ComputingNodesGenerator._allocate_devices(SHARES, DEVICES) == [2, 2, 2, 0]
+    assert ComputingNodesGenerator._allocate_devices(SHARES, DEVICES) == [5, 3, 4, 0]
     assert ComputingNodesGenerator._allocate_devices(SHARES, 20) == [8, 6, 6, 0]
 
 
 def test_the_custom_generator_reserves_the_dropped_type(managers):
     reserved = models.TypeGuaranteeGenerator.last_allocation
-    assert reserved == (1, 2, 2, 1)
+    assert reserved == (4, 3, 4, 1)
     assert reserved[-1] == 1
     assert min(reserved) >= 1
     assert sum(reserved) == DEVICES
@@ -182,7 +182,7 @@ def test_the_printed_lines_report_the_four_hooks(tmp_path, capsys):
     printed = capsys.readouterr().out
     assert "one device reserved from type" in printed
     assert "Added 4 directed MAN links to complete the full mesh of 4 edge data centers" in printed
-    assert "busiest instant: 6 tasks arrive together at t=60 s over 124 generated tasks" in printed
+    assert "busiest instant: 12 tasks arrive together at t=60 s over 151 generated tasks" in printed
     assert "MAN 0.00 s" in printed
     assert "0 transfers crossed a MAN link" in printed
 

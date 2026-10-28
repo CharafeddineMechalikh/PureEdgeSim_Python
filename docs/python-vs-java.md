@@ -30,7 +30,7 @@ Java uses many small classes; Python groups them into modules. The table lists t
 | `energy.EnergyModelComputingNode` | `nodes.EnergyModelComputingNode` |
 | `locationmanager.MobilityModel` and subclasses, `Location` | `mobility.MobilityModel`, its subclasses, `mobility.Location` |
 | `network.NetworkModel`, `DefaultNetworkModel` | `network.DefaultNetworkModel` |
-| `network.NetworkLink` and its up/down/type subclasses (`NetworkLinkWifiUp`, `NetworkLinkCellularDown`, ...) | `network.NetworkLink` plus the `LinkType` and `LinkTechnology` enums |
+| `network.NetworkLink` and its up/down/type subclasses (`NetworkLinkWifiUp`, `NetworkLinkCellularDown`, ...) | `network.NetworkLink` plus the `LinkType` (`WAN`, `MAN`, `LAN`, `IGNORE`) and `LinkTechnology` enums |
 | `network.InfrastructureGraph`, `TransferProgress` | `network.InfrastructureGraph`, `network.TransferProgress` |
 | `taskorchestrator.Orchestrator`, `DefaultOrchestrator` | `orchestrator.Orchestrator`, `orchestrator.DefaultOrchestrator` |
 | `simulationmanager.Simulation`, `SimulationAbstract` | `runner.Simulation` |
@@ -79,7 +79,8 @@ These are real gaps against the Java simulator, verified against `src/pureedgesi
 - **No pluggable registry model.** Container download is modeled in the core, but only in `registry_mode = CLOUD` over the default network (the first cloud node is the registry, and a node that has run an app caches it in `installed_containers`). The `CACHE` mode is accepted by the validator and implemented in the [`container_cache` example](../examples/container_cache/README.md) instead of in the core, because there is no separate registry class to subclass the way Java has one.
 - **No fuzzy logic orchestrator.** The two Java examples that need the jFuzzyLogic jar, `Example5` and `Example8`, have no Python counterpart; the package takes no third-party dependency. [`custom_orchestrator`](../examples/custom_orchestrator/README.md) exercises the same injection point with a distance rule.
 - **Two `SimulationParameters` fields are not read from properties.** `enable_location_updates` and `settings_folder` exist on the dataclass (defaults `True` and `"settings"`), but `load_parameters` never assigns them from the file.
-- **`Network usage` column nuance.** Column 21 sums WAN, MAN, and LAN occupancy; the Java CSV wrote only LAN there. The totals are consistent within the Python port; treat the column meaning as "total link occupancy."
+- **The two device-list columns are written differently.** Columns 50 and 51 hold the remaining battery of each device and the death times. Java wraps them in brackets, `[99.13- 99.77- ...]`, and writes `[]` when empty; Python joins with `-` and writes an empty field. The numbers are the same, the punctuation is not, so compare those two columns by parsing rather than by diffing the text.
+- **A heuristic example settles on a nearby, not identical, mix.** Both simulators draw placement decisions from a random stream, and the two streams are not the same generator. Run the same settings and seed side by side and the totals, the energy and the traffic agree to within a few percent, while the split between the three tiers and the count of delay failures move with the sample. The deterministic scenario, the [trace replay](../examples/trace_replay/README.md) in its recorded mode, draws nothing and gives the same 8819 requests, the same 3180 successes, the same compute total and the same traffic as Java. Two columns are not identical: the total waiting time differs by a hundredth of a percent and the energy of the run by two hundredths.
 
 What the Python port does have, matching Java:
 

@@ -7,6 +7,37 @@ from .network import LinkTechnology, LinkType, NetworkLink
 from .nodes import (CloudDataCenter, ComputingNode, EdgeDataCenter, EdgeDevice, NodeType, Router)
 
 
+def access_link_parameters(parameters, connectivity: str) -> tuple[float, float, float, float]:
+    """Bandwidth, latency and the energy per bit of the two directions of an access link.
+
+    Each direction pays for both of its ends, as the Java link classes do: the uplink
+    sums the transmitter of the device and the receiver of the access point, the
+    downlink sums the transmitter of the access point and the receiver of the device.
+    """
+    if connectivity == "cellular":
+        return (parameters.cellular_bandwidth, parameters.cellular_delay,
+                parameters.cellular_device_transmission_energy + parameters.cellular_base_station_uplink_energy,
+                parameters.cellular_device_reception_energy + parameters.cellular_base_station_downlink_energy)
+    if connectivity == "ethernet":
+        return (parameters.ethernet_bandwidth, parameters.ethernet_delay, parameters.ethernet_energy_per_bit,
+                parameters.ethernet_energy_per_bit)
+    return (parameters.wifi_bandwidth, parameters.wifi_delay,
+            parameters.wifi_device_transmission_energy + parameters.wifi_access_point_reception_energy,
+            parameters.wifi_access_point_transmission_energy + parameters.wifi_device_reception_energy)
+
+
+def wan_access_link_parameters(parameters, connectivity: str) -> tuple[float, float, float, float]:
+    """The device link that leaves for the WAN: the radio cost plus the WAN cost.
+
+    Java builds it with the same link class as the access link, only typed WAN, so it
+    keeps the radio technology, adds the WAN energy per bit and runs at the slowest of
+    the two bandwidths.
+    """
+    bandwidth, _, up_energy, down_energy = access_link_parameters(parameters, connectivity)
+    return (min(parameters.wan_bandwidth, bandwidth), parameters.wan_delay,
+            up_energy + parameters.wan_energy_per_bit, down_energy + parameters.wan_energy_per_bit)
+
+
 class ComputingNodesGenerator:
     def __init__(self, manager) -> None:
         self.manager = manager
@@ -152,21 +183,22 @@ class DefaultTopologyCreator:
     def create(self) -> None:
         cloud = self.generator.cloud_nodes
         edge = self.generator.edge_data_centers
-        router = None
-        if self.parameters.one_shared_wan_network and cloud and edge:
+        if self.parameters.one_shared_wan_network and cloud:
             router = Router(self.manager)
             router.name = "WAN router"
             self.generator.routers.append(router)
-            for node in edge:
-                self._wan(node, router)
-                self._wan(router, node)
-            self._wan(router, cloud[0])
-            self._wan(cloud[0], router)
+            # The hop that leaves the WAN for the cloud is typed IGNORE. Java books
+            # neither its usage nor its energy: the device link that entered the WAN
+            # already paid for the same traffic.
+            self._ignore(router, cloud[0])
+            self._ignore(cloud[0], router)
+            exit_node = router
         else:
-            for node in edge:
-                for cloud_node in cloud:
-                    self._wan(node, cloud_node)
-                    self._wan(cloud_node, node)
+            exit_node = cloud[0] if cloud else None
+        gateway = self._gateway(edge)
+        if gateway is not None and exit_node is not None:
+            self._wan(gateway, exit_node)
+            self._wan(exit_node, gateway)
         for origin, destination in self.files.man_links:
             pair = self._by_name(edge, origin, destination)
             if pair:
@@ -187,43 +219,46 @@ class DefaultTopologyCreator:
             if gap <= distance:
                 closest, distance = candidate, gap
         bandwidth, delay, up_energy, down_energy = self._access_parameters(node)
-        node.up_link = self._link(node, closest, bandwidth, delay, up_energy, LinkType.LAN) if closest else None
-        node.down_link = self._link(closest, node, bandwidth, delay, down_energy, LinkType.LAN) if closest else None
+        technology = LinkTechnology(node.energy_model.connectivity)
+        node.up_link = self._link(node, closest, bandwidth, delay, up_energy, LinkType.LAN,
+                                  technology) if closest else None
+        node.down_link = self._link(closest, node, bandwidth, delay, down_energy, LinkType.LAN,
+                                    technology) if closest else None
         node.serving_edge_data_center = closest
         router = self.generator.routers[0] if self.generator.routers else \
             (self.generator.cloud_nodes[0] if self.generator.cloud_nodes else None)
         if router is not None:
-            node.wan_up_link = self._link(node, router, self.parameters.wan_bandwidth, self.parameters.wan_delay,
-                                          self.parameters.wan_energy_per_bit, LinkType.WAN)
-            node.wan_down_link = self._link(router, node, self.parameters.wan_bandwidth, self.parameters.wan_delay,
-                                           self.parameters.wan_energy_per_bit, LinkType.WAN)
+            wan_bandwidth, wan_delay, wan_up, wan_down = wan_access_link_parameters(
+                self.parameters, node.energy_model.connectivity)
+            node.wan_up_link = self._link(node, router, wan_bandwidth, wan_delay, wan_up, LinkType.WAN, technology)
+            node.wan_down_link = self._link(router, node, wan_bandwidth, wan_delay, wan_down, LinkType.WAN, technology)
             if router.type == NodeType.CLOUD:
                 self.graph.add_node(router)
 
     def _access_parameters(self, node: ComputingNode) -> tuple[float, float, float, float]:
-        parameters = self.parameters
-        connectivity = node.energy_model.connectivity
-        if connectivity == "cellular":
-            return (parameters.cellular_bandwidth, parameters.cellular_delay,
-                    parameters.cellular_device_transmission_energy, parameters.cellular_base_station_downlink_energy)
-        if connectivity == "ethernet":
-            return (parameters.ethernet_bandwidth, parameters.ethernet_delay, parameters.ethernet_energy_per_bit,
-                    parameters.ethernet_energy_per_bit)
-        return (parameters.wifi_bandwidth, parameters.wifi_delay, parameters.wifi_device_transmission_energy,
-                parameters.wifi_access_point_reception_energy)
+        return access_link_parameters(self.parameters, node.energy_model.connectivity)
 
     def _link(self, source: ComputingNode, destination: ComputingNode, bandwidth: float, delay: float,
-              energy: float, link_type: LinkType) -> NetworkLink:
-        technology = LinkTechnology.ETHERNET
-        if link_type == LinkType.LAN and destination.type == NodeType.EDGE_DEVICE:
-            technology = LinkTechnology(destination.energy_model.connectivity)
-        elif link_type == LinkType.LAN and source.type == NodeType.EDGE_DEVICE:
-            technology = LinkTechnology(source.energy_model.connectivity)
+              energy: float, link_type: LinkType, technology: LinkTechnology | None = None) -> NetworkLink:
         return self.graph.connect(source, destination, bandwidth, delay, energy, link_type, technology)
 
     def _wan(self, source: ComputingNode, destination: ComputingNode) -> None:
         self._link(source, destination, self.parameters.wan_bandwidth, self.parameters.wan_delay,
                    self.parameters.wan_energy_per_bit, LinkType.WAN)
+
+    def _ignore(self, source: ComputingNode, destination: ComputingNode) -> None:
+        self._link(source, destination, self.parameters.wan_bandwidth, self.parameters.wan_delay,
+                   self.parameters.wan_energy_per_bit, LinkType.IGNORE)
+
+    @staticmethod
+    def _gateway(edge: list[ComputingNode]) -> ComputingNode | None:
+        """The one edge data center the WAN hangs on, called dc1 in the Java topology.
+
+        Every other data center reaches the cloud through the MAN ring, so the WAN
+        carries the traffic of the whole infrastructure, not one link per data center.
+        """
+        first = next((node for node in edge if node.name == "dc1"), None)
+        return first or (edge[0] if edge else None)
 
     def _man(self, source: ComputingNode, destination: ComputingNode) -> None:
         self._link(source, destination, self.parameters.man_bandwidth, self.parameters.man_delay,

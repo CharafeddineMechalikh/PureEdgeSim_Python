@@ -88,9 +88,9 @@ The container transfer is modeled as a network send of size `container_size` ove
 
 | Property | Attribute it sets | Default | Notes |
 | --- | --- | --- | --- |
-| `realistic_network_model` | `realistic_network_model` | false | False: a transfer finishes in one step at full link speed. True: transfers progress over `network_update_interval` and share bandwidth. |
-| `network_update_interval` | `network_update_interval` | 1 | Seconds between transfer-progress ticks. >= 0.001. |
-| `one_shared_wan_network` | `one_shared_wan_network` | true | True: all cloud traffic passes one WAN router. False: each edge DC has a direct WAN link to each cloud DC. |
+| `realistic_network_model` | `realistic_network_model` | false | False: each hop is served in one step, at the clock of the second that sent it. True: transfers progress one interval at a time and share the link. |
+| `network_update_interval` | `network_update_interval` | 1 | Seconds between the progress ticks of a busy link, in realistic mode. >= 0.001. |
+| `one_shared_wan_network` | `one_shared_wan_network` | true | True: a WAN router fronts the cloud, and the hop from that router to the cloud data center is typed `IGNORE`, so it moves no counter. False: devices link straight to the cloud data center. Either way only the gateway edge data center (the one named `dc1`) hangs on the WAN, and the others reach it through the MAN ring. |
 
 ## Link rates and energies
 

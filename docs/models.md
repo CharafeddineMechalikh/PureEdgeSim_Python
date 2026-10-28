@@ -91,9 +91,13 @@ A device with a `mobility_model` but no explicit `<mobility model>` (a plain `<m
 
 ## Network model
 
-`DefaultNetworkModel` (`pureedgesim/network.py`) routes, shares bandwidth, and charges link and device energy. Links are `NetworkLink` objects with `bandwidth` (bps), `delay` (s), `energy_per_bit` (Wh/bit), a `LinkType` (`WAN`, `MAN`, `LAN`), and a `LinkTechnology` (`WIFI`, `CELLULAR`, `ETHERNET`).
+`DefaultNetworkModel` (`pureedgesim/network.py`) routes, shares bandwidth, and charges link and device energy. Links are `NetworkLink` objects with `bandwidth` (bps), `delay` (s), `energy_per_bit` (Wh/bit), a `LinkType` (`WAN`, `MAN`, `LAN`, or `IGNORE`), and a `LinkTechnology` (`WIFI`, `CELLULAR`, `ETHERNET`) which is `None` on an infrastructure link, because no radio category counts it.
 
-Bandwidth sharing is equal among concurrent transfers: `allocated_bandwidth()` is `bandwidth / len(transfers)`. On each `UPDATE_NETWORK` tick (every `network_update_interval`), a link advances every active transfer. In `realistic_network_model` mode it moves `elapsed * bandwidth` bits (gradual progress and contention); otherwise it completes the hop in one step.
+An `IGNORE` link routes traffic and delays the tasks that cross it, but appears in no usage or energy counter. The default topology uses one: the hop from the WAN router to the cloud. The device link that entered the WAN already booked those bits, and counting the shared last hop again would report the same traffic twice.
+
+Bandwidth sharing is equal among concurrent transfers: `allocated_bandwidth()` is `bandwidth / len(transfers)`. Every link is served by its own event: the static model wakes a link at the current clock and clears its whole payload in one step, so a hop never advances the clock by more than its propagation delay, exactly like the Java `NetworkLink`. `realistic_network_model` instead polls the link every `network_update_interval` and moves `interval * allocated_bandwidth` bits per tick, so progress is gradual and contention is visible. In both modes a transfer that joins a link whose tick is already pending waits for that tick, which is how two transfers sent at the same second end up sharing the capacity. When the last hop of a route is served, the arrival is scheduled `TRANSFER_FINISHED` one link latency later, and only then does the workflow carry on.
+
+The default topology (`topology.DefaultTopologyCreator`) lays the links the router works on. Each device gets an access pair to its serving edge data center, at the radio bandwidth and latency, with an energy per bit that sums the two ends of the hop. It gets a second pair towards the WAN, that keeps the same radio technology and the same link class, runs at the slower of the radio and the WAN bandwidth, and adds the WAN energy per bit on top. Only the gateway data center, the edge data center named `dc1` or the first one when the file uses other names, hangs on the WAN: the others reach the cloud hop by hop through the MAN ring. When a device moves, `connect_with` does not add links, it re-points the pair it already owns with `InfrastructureGraph.move`, so a long run with mobile devices keeps one access link per device instead of accumulating the history of its positions.
 
 Routing is latency-weighted Dijkstra on `InfrastructureGraph`, with paths cached per source/destination pair. Edge devices are never used as intermediate hops (only as endpoints), so mobility cannot open shortcuts. `route_for(source, destination)` handles four cases:
 
@@ -110,7 +114,7 @@ flowchart TD
     DSTDEV -- "no" --> SP["Shortest path in the infrastructure graph"]
 ```
 
-When a transfer finishes a hop, `_charge` books `elapsed_time` into `network_usage` (by link type) and `technology_usage`, records container traffic separately, adds the transferred bits to the link's energy (`transferred_bits * energy_per_bit` unless the link ignores energy), and charges the source (transmission) and destination (reception) energy when an endpoint is an edge device. The accumulated per-type and per-technology totals become the network-usage and network-energy columns; see [Output and metrics](output-and-metrics.md).
+When a transfer finishes a hop, `_charge` books `elapsed_time` into `network_usage` (by link type) and `technology_usage`, records container traffic separately, adds the transferred bits to the link's energy (`transferred_bits * energy_per_bit`), and charges the source (transmission) and destination (reception) energy when an endpoint is an edge device. An `IGNORE` hop still adds its seconds to the network time of the task that crossed it; only the usage, traffic and energy counters stay where they were. The accumulated per-type and per-technology totals become the network-usage and network-energy columns; see [Output and metrics](output-and-metrics.md).
 
 ## Cross-links
 

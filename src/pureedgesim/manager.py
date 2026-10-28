@@ -10,7 +10,7 @@ from .orchestrator import DefaultOrchestrator
 from .parameters import SimulationParameters
 from .randomness import Randomness
 from .tasks import DefaultTaskGenerator, Task, TaskStatus
-from .topology import ComputingNodesGenerator, DefaultTopologyCreator
+from .topology import ComputingNodesGenerator, DefaultTopologyCreator, access_link_parameters
 
 
 class Scenario:
@@ -86,14 +86,6 @@ class SimulationManager(SimEntity):
             node.schedule(node, self.parameters.update_interval, EventType.UPDATE_STATUS)
         self._schedule_batch(0)
         self.schedule(self, self.parameters.simulation_duration, EventType.PRINT_LOG)
-
-    def _d2d_parameters(self) -> tuple[float, float]:
-        connectivity = self.edge_devices[0].energy_model.connectivity
-        if connectivity == "cellular":
-            return self.parameters.cellular_bandwidth, self.parameters.cellular_delay
-        if connectivity == "ethernet":
-            return self.parameters.ethernet_bandwidth, self.parameters.ethernet_delay
-        return self.parameters.wifi_bandwidth, self.parameters.wifi_delay
 
     def _schedule_batch(self, start: int) -> None:
         end = min(start + self.parameters.batch_size, len(self.root_tasks))
@@ -361,39 +353,29 @@ class SimulationManager(SimEntity):
     def connect_with(self, device: ComputingNode, data_center) -> None:
         if data_center is None or data_center is ComputingNode.NULL or device.serving_edge_data_center is data_center:
             return
-        bandwidth, delay, up_energy, down_energy = self._access_energy_for(device)
-        device.up_link = self.network.graph.connect(device, data_center, bandwidth, delay, up_energy, LinkType.LAN,
-                                                    LinkTechnology(device.energy_model.connectivity))
-        device.down_link = self.network.graph.connect(data_center, device, bandwidth, delay, down_energy, LinkType.LAN,
-                                                      LinkTechnology(device.energy_model.connectivity))
+        bandwidth, delay, up_energy, down_energy = access_link_parameters(
+            self.parameters, device.energy_model.connectivity)
+        technology = LinkTechnology(device.energy_model.connectivity)
+        if device.up_link is None:
+            device.up_link = self.network.graph.connect(device, data_center, bandwidth, delay, up_energy,
+                                                        LinkType.LAN, technology)
+            device.down_link = self.network.graph.connect(data_center, device, bandwidth, delay, down_energy,
+                                                          LinkType.LAN, technology)
+        else:
+            self.network.graph.move(device.up_link, device, data_center)
+            self.network.graph.move(device.down_link, data_center, device)
         device.serving_edge_data_center = data_center
-
-    def _access_energy_for(self, device: ComputingNode) -> tuple[float, float, float, float]:
-        parameters = self.parameters
-        connectivity = device.energy_model.connectivity
-        if connectivity == "cellular":
-            return (parameters.cellular_bandwidth, parameters.cellular_delay,
-                    parameters.cellular_device_transmission_energy, parameters.cellular_base_station_downlink_energy)
-        if connectivity == "ethernet":
-            return (parameters.ethernet_bandwidth, parameters.ethernet_delay, parameters.ethernet_energy_per_bit,
-                    parameters.ethernet_energy_per_bit)
-        return (parameters.wifi_bandwidth, parameters.wifi_delay, parameters.wifi_device_transmission_energy,
-                parameters.wifi_access_point_reception_energy)
-
-    def access_link(self, device: ComputingNode, other_end: ComputingNode):
-        """The link the device uses to leave the mist layer for this destination."""
-        if other_end is device.serving_edge_data_center:
-            return device.up_link
-        return device.wan_up_link
 
     def device_to_device_route(self, source: ComputingNode, destination: ComputingNode) -> list:
         if source.distance_to(destination) > self.parameters.edge_devices_range:
             return []
         link = self.device_to_device_links.get((source.id, destination.id))
         if link is None:
-            bandwidth, delay = self._d2d_parameters()
-            link = self.network.graph.connect(source, destination, bandwidth, delay, 0.0, LinkType.LAN,
-                                              LinkTechnology(source.energy_model.connectivity))
+            # Java hardcodes this hop as a wifi link, whatever the connectivity of the
+            # device, and charges both device ends.
+            energy = self.parameters.wifi_device_transmission_energy + self.parameters.wifi_device_reception_energy
+            link = self.network.graph.connect(source, destination, self.parameters.wifi_bandwidth,
+                                              self.parameters.wifi_delay, energy, LinkType.LAN, LinkTechnology.WIFI)
             self.device_to_device_links[(source.id, destination.id)] = link
         return [link]
 

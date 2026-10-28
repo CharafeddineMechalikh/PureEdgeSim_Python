@@ -52,6 +52,24 @@ def run_manager(parameters, files, architecture="ALL", algorithm="TRADE_OFF", de
     return engine, manager
 
 
+def run_until(engine, until, limit=1000):
+    """Runs real events, in time order, until the condition holds.
+
+    Tests that need one transfer to complete use this instead of running the whole
+    scenario: the workload of the built manager starts one second in, so pumping
+    the queue stops as soon as the transfer reaches its destination.
+    """
+    for _ in range(limit):
+        if until():
+            return
+        event = engine.queue.pop()
+        if event is None:
+            break
+        engine.clock = event.time
+        event.destination.process_event(event)
+    raise AssertionError("the condition was never reached")
+
+
 @pytest.fixture
 def manager(parameters, files):
     engine, simulation_manager = build_manager(parameters, files)

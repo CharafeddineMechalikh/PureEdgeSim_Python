@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import build_manager, run_manager
+from conftest import build_manager, run_manager, run_until
 from pureedgesim import LinkType, NodeStatus, NodeType, TaskStatus
-from pureedgesim.network import NetworkLink
+from pureedgesim.network import LinkTechnology, NetworkLink
 
 
 @pytest.fixture
@@ -194,8 +194,7 @@ def test_the_container_is_downloaded_before_the_first_task_of_an_application(par
     assert manager._needs_container(task, destination)
     manager._send_from_orchestrator_to_destination(task)
     assert destination.installed_containers == set()
-    for _ in range(200):
-        manager.network.update()
+    run_until(engine, lambda: destination.installed_containers)
     assert destination.installed_containers == {task.application_id}
     assert manager.network.container_usage[LinkType.WAN] > 0
     assert task.status != TaskStatus.NO_OFFLOADING_DESTINATIONS
@@ -223,12 +222,14 @@ def test_the_device_reconnects_when_it_moves_to_another_data_center(parameters, 
     assert device.serving_edge_data_center is other
 
 
-def test_the_access_link_follows_the_destination(parameters, files):
+def test_a_device_reaches_the_cloud_over_its_wan_link(parameters, files):
     engine, manager = build_manager(parameters, files, devices=10)
     device = manager.edge_devices[0]
     cloud = manager.nodes_generator.cloud_nodes[0]
-    assert manager.access_link(device, device.serving_edge_data_center) is device.up_link
-    assert manager.access_link(device, cloud) is device.wan_up_link
+    route = manager.network.route_for(device, cloud)
+    assert route[0] is device.wan_up_link
+    edge = manager.nodes_generator.edge_data_centers[0]
+    assert manager.network.route_for(device, edge)[0] is device.up_link
 
 
 def test_a_device_to_device_link_is_created_once_and_reused(parameters, files):
@@ -240,6 +241,9 @@ def test_a_device_to_device_link_is_created_once_and_reused(parameters, files):
     assert first == second and isinstance(first[0], NetworkLink)
     assert len(manager.device_to_device_links) == 1
     assert manager.network.route_for(source, target) == first
+    assert first[0].technology == LinkTechnology.WIFI
+    assert first[0].energy_per_bit == pytest.approx(parameters.wifi_device_transmission_energy
+                                                   + parameters.wifi_device_reception_energy)
 
 
 def test_a_battery_that_gives_out_kills_one_device_and_its_pending_tasks(parameters, files):

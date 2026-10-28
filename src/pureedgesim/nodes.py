@@ -220,7 +220,7 @@ class ComputingNode(SimEntity):
             return
         interval = self.manager.parameters.update_interval
         self.energy_model.add_static_energy(interval)
-        if self.mobility_model is not None:
+        if self.mobility_model is not None and self.mobility_model.is_mobile:
             self.mobility_model.update_location(self.engine.clock)
             self.manager.connect_with(self, self.mobility_model.get_closest_edge_data_center())
         if self.is_battery_empty():

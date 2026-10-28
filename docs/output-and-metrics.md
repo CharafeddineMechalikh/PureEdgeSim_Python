@@ -46,11 +46,11 @@ The names are verbatim from `COLUMNS`. Values are rounded to four decimals where
 | 13 | `Tasks not generated due to the death of devices` | Tasks whose source device died before offloading (phase 0). |
 | 14 | `Tasks not executed because a dependency failed` | `FAILED_BECAUSE_DEPENDENCY_FAILED` in a service graph. |
 | 15 | `Total tasks executed (Cloud)` | Tasks whose destination is a cloud node. |
-| 16 | `Successful tasks executed (Cloud)` | Cloud tasks that reached `SUCCESS`. |
+| 16 | `Tasks successfully executed (Cloud)` | Cloud tasks that reached `SUCCESS`. |
 | 17 | `Total tasks executed (Edge)` | Edge data center tasks. |
-| 18 | `Successful tasks executed (Edge)` | Successful edge tasks. |
+| 18 | `Tasks successfully executed (Edge)` | Successful edge tasks. |
 | 19 | `Total tasks executed (Mist)` | Mist (edge device) tasks. |
-| 20 | `Successful tasks executed (Mist)` | Successful mist tasks. |
+| 20 | `Tasks successfully executed (Mist)` | Successful mist tasks. |
 | 21 | `Network usage (s)` | Total link occupancy across WAN, MAN, and LAN. |
 | 22 | `Wan usage (s)` | WAN link occupancy. |
 | 23 | `Lan usage (s)` | LAN link occupancy. |
@@ -88,6 +88,8 @@ The names are verbatim from `COLUMNS`. Values are rounded to four decimals where
 | 55 | `Average request makespan (s)` | Mean completion time of successful requests. |
 
 Columns 52 to 55 are the service-graph additions. For plain applications each task is one request, so 53 equals the generated-task count and 54 equals successes.
+
+Two of the network columns count less than every hop. Columns 21 to 23 skip the `IGNORE` hop that leaves the WAN router for the cloud, and columns 43 to 45 only sum links that carry a radio: the Wi-Fi, cellular and Ethernet figures cover the access links of the devices, while the WAN, MAN and router-to-cloud hops belong to no radio category. The traffic of one transfer is therefore booked on the hops that measure it, not twice on the way out and the way in.
 
 ## The text report
 

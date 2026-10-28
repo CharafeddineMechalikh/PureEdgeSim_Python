@@ -111,7 +111,7 @@ Four runtime classes extend `SimEntity` and therefore receive events directly:
 
 - `SimulationManager`, the hub. Its tags are `SEND_TO_ORCH`, `NEXT_BATCH`, `SEND_TASK_FROM_ORCH_TO_DESTINATION`, `RESULT_RETURN_FINISHED`, and `PRINT_LOG`.
 - `ComputingNode`. Its tags are `UPDATE_STATUS` (the periodic mobility, energy, and battery tick) and `EXECUTION_FINISHED`.
-- `DefaultNetworkModel`. Its tag is `UPDATE_NETWORK`, the transfer-progress tick that shares link bandwidth.
+- `DefaultNetworkModel`. Its tags are `UPDATE_NETWORK`, which carries one busy link and serves the transfers queued on it, and `TRANSFER_FINISHED`, which fires one link latency after the last hop and hands the transfer back to the workflow.
 - Mobility is not an entity. Paths are precomputed once at startup, so nodes do not schedule movement events.
 
 ## How a run is assembled
