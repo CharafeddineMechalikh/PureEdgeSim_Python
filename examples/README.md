@@ -31,6 +31,7 @@ implementations.
 | [self_clustering](self_clustering/README.md) | Self-organizing device clusters with an elected head | `self_clustering/settings/` | [Example 22](https://github.com/CharafeddineMechalikh/PureEdgeSim/tree/master/PureEdgeSim/examples/Example22) |
 | [custom_models](custom_models/README.md) | A custom nodes generator, task generator, topology creator and simulation manager | `custom_models/settings/` | [Example 23](https://github.com/CharafeddineMechalikh/PureEdgeSim/tree/master/PureEdgeSim/examples/Example23) |
 | [dynamic_repartition](dynamic_repartition/README.md) | Repartitioning a service graph while the simulation runs | `dynamic_repartition/settings/` | [Example 24](https://github.com/CharafeddineMechalikh/PureEdgeSim/tree/master/PureEdgeSim/examples/Example24) |
+| [trace_replay](trace_replay/README.md) | Replaying a recorded production trace instead of drawing arrivals | `trace_replay/settings/` | [Example 25](https://github.com/CharafeddineMechalikh/PureEdgeSim/tree/master/PureEdgeSim/examples/Example25) |
 
 Java `Example8` (fuzzy logic orchestration) has no Python counterpart: it needs the
 jFuzzyLogic jar that the Java build bundles, and this package takes no third-party
