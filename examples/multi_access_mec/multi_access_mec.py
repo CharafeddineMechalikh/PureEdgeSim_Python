@@ -93,9 +93,9 @@ class AccessAwareOrchestrator(SimEntity, Orchestrator):
         return parameters.wifi_delay + transfer / parameters.wifi_bandwidth
 
     def on_simulation_end(self) -> None:
-        print(f"AccessAwareOrchestrator - placements by access technology and tier: "
-              f"{', '.join(f'{technology}/{tier}={count}' for (technology, tier), count
-                          in sorted(self.placements.items())) or 'none'}")
+        pairs = ", ".join(f"{technology}/{tier}={count}"
+                          for (technology, tier), count in sorted(self.placements.items()))
+        print(f"AccessAwareOrchestrator - placements by access technology and tier: {pairs or 'none'}")
 
 
 def run(label: str = "ACCESS_AWARE", devices: int | None = None, duration: float | None = None,
