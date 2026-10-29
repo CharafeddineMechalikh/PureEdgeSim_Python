@@ -31,7 +31,7 @@ COLUMNS = [
     "Edge energy consumption (Wh)", "Average Edge energy consumption (Wh/Data center)",
     "Mist energy consumption (Wh)", "Average Mist energy consumption (Wh/Device)",
     "WAN energy consumption (Wh)", "MAN energy consumption (Wh)", "LAN energy consumption (Wh)",
-    "WiFi energy consumption (Wh)", "LTE energy consumption (Wh)", "Ethernet energy consumption (Wh)",
+    "WiFi energy consumption (Wh)", "Cellular energy consumption (Wh)", "Ethernet energy consumption (Wh)",
     "Dead devices count", "Average remaining power (Wh)", "Average remaining power (%)",
     "First edge device death time (s)",
     "List of remaining power (%) (only battery powered devices / 0 = dead)",

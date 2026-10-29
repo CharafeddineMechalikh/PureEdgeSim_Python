@@ -74,7 +74,7 @@ The names are verbatim from `COLUMNS`. Values are rounded to four decimals where
 | 41 | `MAN energy consumption (Wh)` | Energy charged on MAN links. |
 | 42 | `LAN energy consumption (Wh)` | Energy charged on LAN links. |
 | 43 | `WiFi energy consumption (Wh)` | Energy charged on Wi-Fi links. |
-| 44 | `LTE energy consumption (Wh)` | Energy charged on cellular links. |
+| 44 | `Cellular energy consumption (Wh)` | Energy charged on cellular links, whatever radio technology the parameters describe. |
 | 45 | `Ethernet energy consumption (Wh)` | Energy charged on Ethernet links. |
 | 46 | `Dead devices count` | Devices whose battery emptied. |
 | 47 | `Average remaining power (Wh)` | Mean remaining battery across alive battery devices. |

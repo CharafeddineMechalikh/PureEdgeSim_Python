@@ -49,6 +49,11 @@ def test_a_row_holds_one_value_per_csv_column(parameters, files):
     assert list(row) == COLUMNS
 
 
+def test_the_cellular_column_does_not_name_a_radio_technology():
+    assert "Cellular energy consumption (Wh)" in COLUMNS
+    assert not any("LTE" in column for column in COLUMNS)
+
+
 def test_the_row_starts_with_the_scenario_it_was_run_for(parameters, files):
     sweep(parameters)
     row = run_scenario(parameters, files, Scenario("MIST_AND_EDGE", "ROUND_ROBIN", 5), 0)
