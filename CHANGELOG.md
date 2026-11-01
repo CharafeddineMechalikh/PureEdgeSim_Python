@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## Version 6.1.0 Changelog (November 1st 2026)
+
+*   The version number follows the Java simulator, which now releases 6.1. The
+    Java release adds two base classes (`AbstractQueueElement` and `LinkProfile`)
+    for a simulator that extends its engine, plus a jar-manifest fix; neither has
+    a Python analogue, so nothing here changes behaviour on that account. The
+    entries below are the Python-side work that accumulated since 6.0.0.
 
 *   The cellular link no longer claims to be LTE. Bandwidth, latency and energy per bit
     come from the `cellular_*` settings, so the same link models 3G, 4G, 5G or a profile

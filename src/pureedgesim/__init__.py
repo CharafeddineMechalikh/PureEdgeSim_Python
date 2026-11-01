@@ -28,7 +28,7 @@ from .runner import COLUMNS, Simulation, run_scenario, summarize
 from .tasks import DefaultTaskGenerator, Task, TaskStatus
 from .topology import ComputingNodesGenerator, DefaultTopologyCreator
 
-__version__ = "6.0.0"
+__version__ = "6.1.0"
 
 __all__ = [
     "Application", "BernoulliDistribution", "BetaDistribution", "BinomialDistribution",
