@@ -1,5 +1,20 @@
 # Changelog
 
+## Version 6.1.1 Changelog (November 18th 2026)
+
+*   Fixed a battery-energy accounting defect. Creating a partially drained device
+    preloaded `batteryCapacity * (1 - initialBatteryLevel/100)` into the CPU
+    consumption accumulator so that `capacity - consumption` would yield the
+    remaining charge. That made the *reported energy consumption* depend on the
+    assumed starting charge: the same work appeared to cost orders of magnitude
+    more at a low initial level. The initial charge is now applied only when the
+    remaining battery is computed in `ComputingNode.get_remaining_battery`, and
+    `get_total_energy_consumption` is energy spent since the run started.
+    Remaining battery and device death are numerically unchanged, so depletion
+    behaviour is bit-identical; only the energy totals in the CSV change when
+    `initialBatteryLevel` is below 100. Regression test:
+    `tests/test_nodes.py::test_initial_charge_is_not_counted_as_consumption`.
+
 ## Version 6.1.0 Changelog (November 1st 2026)
 
 *   The version number follows the Java simulator, which now releases 6.1. The

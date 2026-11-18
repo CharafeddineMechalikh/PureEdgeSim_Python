@@ -146,8 +146,13 @@ class ComputingNodesGenerator:
         energy.battery_powered = spec.battery
         energy.battery_capacity = spec.battery_capacity.sample()
         energy.initial_battery_level = spec.initial_battery_level.sample()
-        if spec.battery:
-            energy.cpu_energy_consumption = energy.battery_capacity * (1 - energy.initial_battery_level / 100)
+        # The initial charge is a property of the battery, not consumption.  An
+        # earlier version preloaded it into ``cpu_energy_consumption`` so that
+        # ``battery_capacity - total_consumption`` would yield the remaining
+        # charge; that made every reported energy total include a constant offset
+        # proportional to the assumed initial level.  The offset is now applied
+        # inside ``get_remaining_battery`` instead, so totals are real
+        # consumption and no longer depend on the starting charge.
         energy.set_connectivity_type(spec.connectivity, self.parameters)
         return node
 

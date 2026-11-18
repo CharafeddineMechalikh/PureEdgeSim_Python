@@ -167,7 +167,11 @@ class ComputingNode(SimEntity):
         return self.is_battery_powered() and self.get_remaining_battery() <= 0
 
     def get_remaining_battery(self) -> float:
-        return max(0.0, self.energy_model.battery_capacity - self.energy_model.get_total_energy_consumption())
+        # ``get_total_energy_consumption`` is consumption since the run started and
+        # does not include the charge the battery was created with, so the usable
+        # starting charge (capacity x initial level) is the quantity to subtract.
+        available = self.energy_model.battery_capacity * self.energy_model.initial_battery_level / 100.0
+        return max(0.0, available - self.energy_model.get_total_energy_consumption())
 
     def get_remaining_battery_percentage(self) -> float:
         if self.energy_model.battery_capacity <= 0:

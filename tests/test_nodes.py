@@ -132,13 +132,24 @@ def test_connectivity_selects_the_energy_rates(parameters, files):
     assert model.transmission_energy_per_bit == pytest.approx(parameters.ethernet_energy_per_bit / 2)
 
 
-def test_battery_starts_partially_drained(parameters, files):
+def test_initial_charge_is_not_counted_as_consumption(parameters, files):
+    """The unused share of a battery is a starting condition, not energy spent."""
     engine, manager = build_manager(parameters, files, devices=100)
     node = next((n for n in manager.edge_devices if n.is_battery_powered()), None)
     if node is None:
         pytest.skip("the scenario has no battery powered device")
-    expected = node.energy_model.battery_capacity * (1 - node.energy_model.initial_battery_level / 100)
-    assert node.energy_model.cpu_energy_consumption == pytest.approx(expected)
+    model = node.energy_model
+    model.battery_capacity = 100.0
+    model.initial_battery_level = 50.0
+    model.cpu_energy_consumption = 0.0
+    model.network_energy_consumption = 0.0
+    assert model.get_total_energy_consumption() == pytest.approx(0.0)
+    assert node.get_remaining_battery() == pytest.approx(50.0)
+    model.add_dynamic_energy(1000.0, node.total_mips)
+    spent = model.get_total_energy_consumption()
+    assert spent > 0.0
+    assert node.get_remaining_battery() == pytest.approx(50.0 - spent)
+    assert node.get_remaining_battery_percentage() == pytest.approx(100 * (50.0 - spent) / 100.0)
 
 
 def test_a_device_dies_when_the_battery_is_empty(running):
